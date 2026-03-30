@@ -375,6 +375,48 @@ const sidebarTopics = {
     statALabel: "Tok/s per user bands",
     statB: "Smooth / Acceptable / Poor / Unusable",
     statBLabel: "QA / RAG feel"
+  },
+  "workload-reference": {
+    title: "Workload reference",
+    eyebrow: "QA / RAG context",
+    summary: "This table is a reference for context in a QA / RAG application when sizing the workload inputs.",
+    detail:
+      "Use the table as a planning reference for what usually makes up the prompt-side context in a retrieval-backed Q&A flow. It is meant to help interpret the workload calculator, not prescribe an exact prompt template.",
+    formula: "Prompt context ~= system prompt + retrieved context + retained user history + current turn",
+    assumptions: [
+      "The split is a realistic planning range for many QA / RAG workloads.",
+      "Retrieved chunk count, chunk size, and memory policy can move the total quickly."
+    ],
+    pitfalls: [
+      "Treating the table as a fixed recipe for every application.",
+      "Forgetting that chat history counts only if it is still retained in the active prompt."
+    ],
+    statA: "4k-8k",
+    statALabel: "Typical total context",
+    statB: "Reference",
+    statBLabel: "Planning aid",
+    referenceTable: [
+      {
+        component: "System Prompt",
+        tokenUsage: "~500 - 1,000",
+        notes: "The instructions, guardrails, and assistant framing."
+      },
+      {
+        component: "RAG Context",
+        tokenUsage: "~2,000 - 3,000",
+        notes: "Usually top 3-5 search results (chunks of ~500 tokens each), or 7-8 chunks at around 400 tokens each."
+      },
+      {
+        component: "User History",
+        tokenUsage: "~1,000 - 4,000",
+        notes: "The last 5-10 turns of conversation, depending on memory strategy."
+      },
+      {
+        component: "Total Average",
+        tokenUsage: "~4,000 - 8,000",
+        notes: "A realistic planning range for many QA / RAG workloads."
+      }
+    ]
   }
 };
 
@@ -385,6 +427,7 @@ const state = {
   selectedSectionId: "constraints",
   selectedTopicId: "mental-model",
   sidebarOpen: false,
+  sidebarWidth: 360,
   modelPresetId: "velvet-14b",
   hardwarePresetId: "a100-80",
   model: structuredClone(modelPresets[0]),
@@ -395,6 +438,231 @@ const state = {
     concurrentUsers: 20,
     overheadMultiplier: 1.25,
     hiddenReasoningTokens: 0
+  }
+};
+
+const topicEnhancements = {
+  "weight-vram": {
+    guideReferences: [
+      "Inference guide Step 2: Sizing Static VRAM (The Weights)",
+      "Inference guide Worked Example Velvet 14B"
+    ],
+    liveStats(results) {
+      return [
+        { label: "Total params", value: `${formatNumber(state.model.totalParamsB, 1)}B` },
+        { label: "Weight bytes", value: `${formatNumber(state.model.weightBytes, 1)} B` },
+        { label: "Weight memory", value: formatGB(results.weightMemoryGB) },
+        { label: "Cluster VRAM", value: formatGB(results.totalSystemVramGB) }
+      ];
+    },
+    walkthrough(results) {
+      return [
+        {
+          label: "Start with stored parameters",
+          value: `${formatNumber(state.model.totalParamsB, 1)}B total parameters`,
+          note: `${getArchitectureLabel(state.model.architecture)} storage still uses the full model, so this step follows total parameters rather than active parameters.`
+        },
+        {
+          label: "Apply the chosen precision",
+          value: `${formatNumber(state.model.weightBytes, 1)} bytes per weight`,
+          note: "This is the selected storage precision for the model weights."
+        },
+        {
+          label: "Multiply for raw resident size",
+          value: `${formatNumber(state.model.totalParamsB, 1)} × ${formatNumber(state.model.weightBytes, 1)} = ${formatGB(results.weightMemoryGB)}`,
+          note: "This is raw weight memory only, before KV cache, runtime workspace, and planning headroom."
+        }
+      ];
+    }
+  },
+  "kv-cache": {
+    guideReferences: [
+      "Inference guide Step 3: Sizing Dynamic VRAM (The KV Cache)",
+      "Inference guide What is the “average” context breakdown in standard QA RAG Agents?",
+      "Inference guide Calculating concurrent users"
+    ],
+    liveStats(results) {
+      return [
+        { label: "Prompt", value: formatTokens(state.workload.promptTokens) },
+        { label: "Output", value: formatTokens(state.workload.outputTokens) },
+        { label: "Total sequence", value: formatTokens(results.totalSequenceTokens) },
+        { label: "KV per user", value: formatGB(results.kvPerUserGB) }
+      ];
+    },
+    walkthrough(results) {
+      return [
+        {
+          label: "Build the full sequence length",
+          value: `${formatTokens(state.workload.promptTokens)} prompt + ${formatTokens(state.workload.outputTokens)} output = ${formatTokens(results.totalSequenceTokens)} total tokens`,
+          note: "The guide treats both prompt and generated output as part of the active sequence, so both contribute to KV growth."
+        },
+        {
+          label: "Compute KV bytes per token",
+          value: `${formatCompact(results.kvPerTokenBytes, 1)} bytes/token`,
+          note: `The app uses 2 × layers × KV heads × head dim × KV bytes × MLA factor. It deliberately uses ${formatNumber(state.model.kvHeads, 0)} KV heads, not ${formatNumber(state.model.attentionHeads, 0)} attention heads, following the guide's GQA warning.`
+        },
+        {
+          label: "Scale by sequence length",
+          value: `${formatCompact(results.kvPerTokenBytes, 1)} × ${formatTokens(results.totalSequenceTokens)} = ${formatGB(results.kvPerUserGB)}`,
+          note: "That gives the KV cache footprint for one active user at the current sequence length."
+        }
+      ];
+    }
+  },
+  overhead: {
+    guideReferences: [
+      "Inference guide Step 2: Sizing Static VRAM (The Weights)",
+      "Inference guide Step 3: Sizing Dynamic VRAM (The KV Cache)",
+      "Inference guide Step 4: The “Reality Tax” (Overhead)",
+      "Inference guide Worked Example Velvet 14B"
+    ],
+    liveStats(results) {
+      return [
+        { label: "Total KV", value: formatGB(results.totalKvGB) },
+        { label: "Raw weights + KV", value: formatGB(results.weightMemoryGB + results.totalKvGB) },
+        { label: "Overhead", value: `${formatNumber(state.workload.overheadMultiplier, 2)}×` },
+        { label: "Estimated VRAM", value: formatGB(results.requiredVramGB) }
+      ];
+    },
+    walkthrough(results) {
+      const rawWorkingSet = results.weightMemoryGB + results.totalKvGB;
+      return [
+        {
+          label: "Expand one-user KV to all concurrent users",
+          value: `${formatGB(results.kvPerUserGB)} × ${formatNumber(state.workload.concurrentUsers, 0)} = ${formatGB(results.totalKvGB)}`,
+          note: "This is the total live cache footprint for the selected concurrency."
+        },
+        {
+          label: "Add static weights and dynamic cache",
+          value: `${formatGB(results.weightMemoryGB)} + ${formatGB(results.totalKvGB)} = ${formatGB(rawWorkingSet)}`,
+          note: "This is the raw working set before any runtime safety margin."
+        },
+        {
+          label: "Apply the planning multiplier",
+          value: `${formatGB(rawWorkingSet)} × ${formatNumber(state.workload.overheadMultiplier, 2)} = ${formatGB(results.requiredVramGB)}`,
+          note: `The guide's reality-tax step is why the app compares ${formatGB(results.requiredVramGB)} against ${formatGB(results.totalSystemVramGB)} total system VRAM instead of using the raw working set alone.`
+        }
+      ];
+    }
+  },
+  decode: {
+    guideReferences: [
+      "Inference guide Step 5: Sizing Throughput (Tokens Per Second)",
+      "Inference guide The throughput matter",
+      "Inference guide this is for a user so how does it feel for concurrent users?"
+    ],
+    liveStats(results) {
+      return [
+        { label: "Active params", value: `${formatNumber(results.activeParamsB, 1)}B` },
+        { label: "Agg. bandwidth", value: `${formatNumber(results.aggregateBandwidthTBps, 2)} TB/s` },
+        { label: "Service TPS", value: `${formatNumber(results.serviceThroughputTps, 0)} tok/s` },
+        { label: "Per user", value: `${formatNumber(results.tpsPerUser, 1)} tok/s` }
+      ];
+    },
+    walkthrough(results) {
+      const batchingGain = results.decodeTps > 0 ? results.serviceThroughputTps / results.decodeTps : 0;
+      return [
+        {
+          label: "Start from the guide's decode baseline",
+          value: `${formatNumber(results.activeParamsB, 1)}B active params at ${formatNumber(results.aggregateBandwidthTBps, 2)} TB/s`,
+          note: "Dense models use total parameters here. MoE and MLA use active parameters, which is why sparse models can store large weights but decode faster."
+        },
+        {
+          label: "Convert bandwidth into single-stream decode speed",
+          value: `${formatDuration(results.decodeTimePerTokenSec)} per token = ${formatNumber(results.decodeTps, 0)} tok/s`,
+          note: "This is the bandwidth-dominant first-order estimate from the inference guide."
+        },
+        {
+          label: "Apply the app's concurrency batching heuristic",
+          value: `${formatNumber(results.decodeTps, 0)} × ${formatNumber(batchingGain, 2)} = ${formatNumber(results.serviceThroughputTps, 0)} tok/s`,
+          note: "The guide gives the baseline decode math. The app then adds a batching-gain heuristic so the service-throughput card reflects shared decode under active concurrency."
+        },
+        {
+          label: "Split the total service rate across users",
+          value: `${formatNumber(results.serviceThroughputTps, 0)} ÷ ${formatNumber(state.workload.concurrentUsers, 0)} = ${formatNumber(results.tpsPerUser, 1)} tok/s per user`,
+          note: "That per-user number is what the app later uses for the typical-experience heuristic."
+        }
+      ];
+    }
+  },
+  ttft: {
+    guideReferences: [
+      "Inference guide Step 6: Sizing Latency (Time To First Token)",
+      "Inference guide Note about hidden reasoning generation",
+      "Inference guide The throughput matter"
+    ],
+    liveStats(results) {
+      const stats = [
+        { label: "Prompt", value: formatTokens(state.workload.promptTokens) },
+        { label: "Agg. compute", value: `${formatNumber(results.aggregateComputeTFLOPS, 0)} TFLOPS` },
+        { label: "TTFT floor", value: formatDuration(results.ttftFloorSec) },
+        { label: "TTFT under load", value: formatDuration(results.ttftUnderLoadSec) }
+      ];
+
+      if (state.workload.hiddenReasoningTokens > 0) {
+        stats.push({ label: "Answer start", value: formatDuration(results.answerStartSec) });
+      }
+
+      return stats;
+    },
+    walkthrough(results) {
+      const loadPenalty = results.ttftFloorSec > 0 ? results.ttftUnderLoadSec / results.ttftFloorSec : 0;
+      return [
+        {
+          label: "Choose the prefill-sized model footprint",
+          value: `${formatNumber(results.prefillParamsB, 1)}B effective prefill params`,
+          note: "Dense models use total parameters for prefill. MoE and MLA use active parameters for the lower-bound intuition described in the guide."
+        },
+        {
+          label: "Compute the theoretical TTFT floor",
+          value: `${formatNumber(results.prefillParamsB, 1)}B × ${formatTokens(state.workload.promptTokens)} prompt tokens × 2 ÷ ${formatNumber(results.aggregateComputeTFLOPS, 0)} TFLOPS = ${formatDuration(results.ttftFloorSec)}`,
+          note: "This follows the guide's lower-bound TTFT framing rather than a production latency promise."
+        },
+        {
+          label: "Apply the app's load penalty",
+          value: `${formatDuration(results.ttftFloorSec)} × ${formatNumber(loadPenalty, 2)} = ${formatDuration(results.ttftUnderLoadSec)}`,
+          note: "The app scales the floor upward when per-user throughput drops under load, so this card is more practical than the theoretical floor alone."
+        },
+        {
+          label: "Optionally add hidden reasoning delay",
+          value: state.workload.hiddenReasoningTokens > 0 ? `${formatTokens(state.workload.hiddenReasoningTokens)} hidden tokens push answer start to ${formatDuration(results.answerStartSec)}` : "No hidden reasoning tokens are added in the current scenario",
+          note: "This matches the guide's warning that reasoning models can feel slower even when the visible TTFT math looks acceptable."
+        }
+      ];
+    }
+  },
+  "workload-reference": {
+    guideReferences: [
+      "Inference guide What is the “average” context breakdown in standard QA RAG Agents?",
+      "Inference guide Calculating concurrent users"
+    ],
+    liveStats(results) {
+      return [
+        { label: "Prompt", value: formatTokens(state.workload.promptTokens) },
+        { label: "Output", value: formatTokens(state.workload.outputTokens) },
+        { label: "Total sequence", value: formatTokens(results.totalSequenceTokens) },
+        { label: "Concurrent users", value: formatNumber(state.workload.concurrentUsers, 0) }
+      ];
+    },
+    walkthrough(results) {
+      return [
+        {
+          label: "Use the guide's QA / RAG planning range",
+          value: "Typical total context: 4k-8k tokens",
+          note: "The table is there to help you decide whether your prompt-side assumptions look light, standard, or aggressive."
+        },
+        {
+          label: "Compare your live prompt mix",
+          value: `${formatTokens(state.workload.promptTokens)} prompt + ${formatTokens(state.workload.outputTokens)} output = ${formatTokens(results.totalSequenceTokens)} total sequence`,
+          note: "If this total grows well past the guide's common range, KV pressure and practical concurrency fall quickly."
+        },
+        {
+          label: "Use it as an input sanity check",
+          value: `${formatNumber(state.workload.concurrentUsers, 0)} concurrent users at ${formatTokens(results.totalSequenceTokens)} total tokens each`,
+          note: "The guide's workload table is not a template. It is a planning reference for deciding whether your workload assumptions are plausible."
+        }
+      ];
+    }
   }
 };
 
@@ -626,7 +894,6 @@ function loadHardwarePreset(presetId) {
 function loadWorkedExample() {
   loadModelPreset("velvet-14b");
   loadHardwarePreset("a100-80");
-  state.mode = "sandbox";
   state.workload = {
     promptTokens: 7680,
     outputTokens: 512,
@@ -722,16 +989,13 @@ function renderSectionRail() {
 
 function renderHeroStrip(results) {
   const primarySummary =
-    state.mode === "guide"
-      ? "Walk the guide, click any system block, and open the sidebar when you want the deeper explanation."
-      : "Adjust the model, hardware, and workload assumptions and watch the memory, throughput, and latency story update together.";
+    "Adjust the model, hardware, and workload assumptions, then use the Info buttons to inspect the math, assumptions, and inference-guide references behind each metric.";
 
   return `
     <section class="hero-strip">
       <div class="hero-panel">
-        <div class="micro-label">Operating canvas</div>
-        ${renderModeSwitch()}
-        <h2 class="hero-title">A visual control room for LLM sizing, not just another long article.</h2>
+        <div class="micro-label">Sizing sandbox</div>
+        <h2 class="hero-title">Change the assumptions and inspect each metric without leaving the calculator.</h2>
         <p class="guide-copy">${primarySummary}</p>
         <div class="chip-row">
           <div class="chip"><strong>${state.model.name}</strong> • ${getArchitectureLabel(state.model.architecture)}</div>
@@ -870,9 +1134,20 @@ function renderControlDeck(results) {
         </div>
       </article>
       <article class="control-group">
-        <div>
-          <div class="micro-label">Workload</div>
-          <h3>Context, concurrency, and caution</h3>
+        <div class="control-header">
+          <div>
+            <div class="micro-label">Workload</div>
+            <h3>Context, concurrency, and caution</h3>
+          </div>
+          <button
+            type="button"
+            class="control-info-button"
+            data-action="open-topic"
+            data-topic="workload-reference"
+            aria-label="Open workload reference"
+          >
+            Info
+          </button>
         </div>
         <div class="field-grid">
           <label class="field">
@@ -1121,6 +1396,15 @@ function renderScenarioGrid() {
   `;
 }
 
+function renderMetricHeader(label, topicId) {
+  return `
+    <div class="metric-card-header">
+      <div class="metric-label">${label}</div>
+      ${topicId ? `<button type="button" class="control-info-button metric-info-button" data-action="open-topic" data-topic="${topicId}" aria-label="Open ${label} explanation">Info</button>` : ""}
+    </div>
+  `;
+}
+
 function renderGuideView(results) {
   return `
     <section class="guide-stack">
@@ -1168,33 +1452,33 @@ function renderSandboxView(results) {
     <section class="guide-stack">
       <div class="metric-grid">
         <article class="metric-card accent">
-          <div class="metric-label">Weight memory</div>
+          ${renderMetricHeader("Weight memory", "weight-vram")}
           <div class="metric-value">${formatGB(results.weightMemoryGB)}</div>
           <div class="metric-subtext">Raw resident model size from total parameters and weight precision.</div>
         </article>
         <article class="metric-card cyan">
-          <div class="metric-label">KV per user</div>
+          ${renderMetricHeader("KV per user", "kv-cache")}
           <div class="metric-value">${formatGB(results.kvPerUserGB)}</div>
           <div class="metric-subtext">At ${formatTokens(results.totalSequenceTokens)} total sequence tokens.</div>
         </article>
         <article class="metric-card ${results.fitsInMemory ? "success" : "warning"}">
-          <div class="metric-label">Total estimated VRAM</div>
+          ${renderMetricHeader("Total estimated VRAM", "overhead")}
           <div class="metric-value">${formatGB(results.requiredVramGB)}</div>
           <div class="metric-subtext">${results.fitsInMemory ? "Fits inside the selected card envelope." : "Exceeds the selected card envelope."}</div>
         </article>
         <article class="metric-card accent">
-          <div class="metric-label">Service throughput</div>
+          ${renderMetricHeader("Service throughput", "decode")}
           <div class="metric-value">${formatNumber(results.serviceThroughputTps, 0)} tok/s</div>
           <div class="metric-subtext"><strong>${formatNumber(results.tpsPerUser, 1)} tok/s per user</strong> at the selected concurrency.</div>
           <div class="metric-subtext">Concurrency-aware throughput using the QA / RAG per-user speed heuristic.</div>
         </article>
         <article class="metric-card cyan">
-          <div class="metric-label">TTFT under load</div>
+          ${renderMetricHeader("TTFT under load", "ttft")}
           <div class="metric-value">${formatDuration(results.ttftUnderLoadSec)}</div>
           <div class="metric-subtext">Relative to a theoretical floor of ${formatDuration(results.ttftFloorSec)}.</div>
         </article>
         <article class="metric-card ${experienceClass === "comfortable" ? "success" : experienceClass === "tight" ? "accent" : "warning"}">
-          <div class="metric-label">Typical experience</div>
+          ${renderMetricHeader("Typical experience")}
           <div class="zone-pill ${experienceClass}">${results.fitsInMemory ? results.experienceLabel : "Does not fit"}</div>
           <div class="metric-subtext">${experienceCopy}</div>
           <div class="action-row">
@@ -1208,7 +1492,6 @@ function renderSandboxView(results) {
             <div class="section-kicker">Memory composition</div>
             <h3>Show the post-overhead memory demand and the likely human feel for the selected concurrency.</h3>
           </div>
-          <button type="button" class="action-button" data-action="open-topic" data-topic="overhead">Explain the overhead rule</button>
         </div>
         <div class="visual-grid">
           <div class="visual-panel half">
@@ -1239,10 +1522,92 @@ function renderSandboxView(results) {
 }
 
 function renderSidebar(results) {
-  const topic = sidebarTopics[state.selectedTopicId] || sidebarTopics["mental-model"];
+  const topicId = sidebarTopics[state.selectedTopicId] ? state.selectedTopicId : "mental-model";
+  const topic = sidebarTopics[topicId] || sidebarTopics["mental-model"];
+  const enhancement = topicEnhancements[topicId] || {};
+  const guideReferences = enhancement.guideReferences || [];
+  const liveStats =
+    typeof enhancement.liveStats === "function"
+      ? enhancement.liveStats(results)
+      : [
+          { label: "VRAM demand", value: formatGB(results.requiredVramGB) },
+          { label: "Decode", value: `${formatNumber(results.decodeTps, 0)} tok/s` }
+        ];
+  const walkthrough = typeof enhancement.walkthrough === "function" ? enhancement.walkthrough(results) : [];
+  const referenceTable = topic.referenceTable
+    ? `
+        <div class="sidebar-block">
+          <div class="metric-label">Reference table</div>
+          <div class="sidebar-table-wrap">
+            <table class="sidebar-table">
+              <thead>
+                <tr>
+                  <th>Component</th>
+                  <th>Token usage</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${topic.referenceTable
+                  .map(
+                    (row) => `
+                      <tr>
+                        <td>${row.component}</td>
+                        <td>${row.tokenUsage}</td>
+                        <td>${row.notes}</td>
+                      </tr>
+                    `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `
+    : "";
+  const walkthroughSection = walkthrough.length
+    ? `
+        <div class="sidebar-block">
+          <div class="metric-label">How we got this number</div>
+          <div class="sidebar-step-list">
+            ${walkthrough
+              .map(
+                (step, index) => `
+                  <div class="sidebar-step">
+                    <div class="sidebar-step-index">${String(index + 1).padStart(2, "0")}</div>
+                    <div class="sidebar-step-copy">
+                      <strong>${step.label}</strong>
+                      <div class="topic-copy">${step.value}</div>
+                      ${step.note ? `<div class="support-copy">${step.note}</div>` : ""}
+                    </div>
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
+        </div>
+      `
+    : "";
+  const guideReferenceSection = guideReferences.length
+    ? `
+        <div class="sidebar-block">
+          <div class="metric-label">Inference guide references</div>
+          <ul>
+            ${guideReferences.map((reference) => `<li>${reference}</li>`).join("")}
+          </ul>
+        </div>
+      `
+    : "";
 
   return `
     <aside class="sidebar" aria-hidden="${state.sidebarOpen ? "false" : "true"}">
+      <button
+        type="button"
+        class="sidebar-resize-handle"
+        data-action="start-sidebar-resize"
+        aria-label="Resize sidebar"
+        title="Drag to resize"
+      ></button>
       <div class="sidebar-header">
         <div>
           <div class="micro-label">${topic.eyebrow}</div>
@@ -1270,19 +1635,24 @@ function renderSidebar(results) {
           <div class="metric-label">Formula or rule</div>
           <code>${topic.formula}</code>
         </div>
+        ${walkthroughSection}
+        ${referenceTable}
         <div class="sidebar-block">
           <div class="metric-label">Current live values</div>
           <div class="topic-stat-row">
-            <div class="topic-stat-card">
-              <div class="metric-label">VRAM demand</div>
-              <div class="topic-stat">${formatGB(results.requiredVramGB)}</div>
-            </div>
-            <div class="topic-stat-card">
-              <div class="metric-label">Decode</div>
-              <div class="topic-stat">${formatNumber(results.decodeTps, 0)} tok/s</div>
-            </div>
+            ${liveStats
+              .map(
+                (item) => `
+                  <div class="topic-stat-card">
+                    <div class="metric-label">${item.label}</div>
+                    <div class="topic-stat">${item.value}</div>
+                  </div>
+                `
+              )
+              .join("")}
           </div>
         </div>
+        ${guideReferenceSection}
         <div class="sidebar-block">
           <div class="metric-label">Assumptions</div>
           <ul>
@@ -1312,29 +1682,24 @@ function renderAttentionNote() {
 }
 
 function renderMain(results) {
-  if (state.mode === "sandbox") {
-    return renderSandboxView(results);
-  }
-  return renderGuideView(results);
+  return renderSandboxView(results);
 }
 
 function renderApp() {
   const results = calculateSizing(state.model, state.hardware, state.workload);
-  const showGuideRail = state.mode === "guide";
-  const workspaceClass = `${showGuideRail ? "has-rail" : "no-rail"} ${state.sidebarOpen ? "sidebar-open" : "sidebar-closed"}`;
+  const workspaceClass = `no-rail ${state.sidebarOpen ? "sidebar-open" : "sidebar-closed"}`;
 
   app.innerHTML = `
-    <div class="app-shell">
+    <div class="app-shell" style="--sidebar-width: ${state.sidebarWidth}px;">
       <header class="masthead">
         <div class="masthead-grid">
-          <h1>Start in the sizing sandbox, then switch to guide mode when you want the walkthrough.</h1>
+          <h1>Use the sizing sandbox directly, then open metric info when you want the derivation.</h1>
           <p>
-            The default view is a live calculator for model, hardware, and workload assumptions. Guide mode is still available when you want the structured narrative, visual breakdowns, and on-demand explanations in the sidebar.
+            The app now stays in calculator mode. Each metric sidebar explains the math, assumptions, and matching inference-guide sections without sending you to a separate guide view.
           </p>
         </div>
       </header>
       <div class="workspace ${workspaceClass}">
-        ${showGuideRail ? renderSectionRail() : ""}
         <main class="main-column">
           ${renderHeroStrip(results)}
           ${renderAttentionNote()}
@@ -1450,6 +1815,36 @@ document.addEventListener("keydown", (event) => {
     state.sidebarOpen = false;
     renderApp();
   }
+});
+
+const SIDEBAR_MIN_WIDTH = 320;
+const SIDEBAR_MAX_WIDTH = 720;
+
+function clampSidebarWidth(value) {
+  return clamp(value, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH);
+}
+
+document.addEventListener("pointerdown", (event) => {
+  const target = event.target.closest('[data-action="start-sidebar-resize"]');
+  if (!target || window.innerWidth <= 1260) {
+    return;
+  }
+
+  const startX = event.clientX;
+  const startWidth = state.sidebarWidth;
+
+  const handlePointerMove = (moveEvent) => {
+    state.sidebarWidth = clampSidebarWidth(startWidth - (moveEvent.clientX - startX));
+    renderApp();
+  };
+
+  const handlePointerUp = () => {
+    document.removeEventListener("pointermove", handlePointerMove);
+    document.removeEventListener("pointerup", handlePointerUp);
+  };
+
+  document.addEventListener("pointermove", handlePointerMove);
+  document.addEventListener("pointerup", handlePointerUp);
 });
 
 renderApp();
