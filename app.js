@@ -64,7 +64,10 @@ const hardwarePresets = [
     gpuCount: 1,
     vramGB: 80,
     bandwidthTBps: 2.039,
-    computeTFLOPS: 312
+    computeTFLOPS: 312,
+    decodeEfficiencyPct: 70,
+    prefillEfficiencyPct: 50,
+    multiGpuEfficiencyPct: 90
   },
   {
     id: "h100-80",
@@ -72,7 +75,10 @@ const hardwarePresets = [
     gpuCount: 1,
     vramGB: 80,
     bandwidthTBps: 3.35,
-    computeTFLOPS: 989
+    computeTFLOPS: 989,
+    decodeEfficiencyPct: 75,
+    prefillEfficiencyPct: 55,
+    multiGpuEfficiencyPct: 90
   },
   {
     id: "rtx-4090",
@@ -80,7 +86,10 @@ const hardwarePresets = [
     gpuCount: 1,
     vramGB: 24,
     bandwidthTBps: 1.008,
-    computeTFLOPS: 330
+    computeTFLOPS: 330,
+    decodeEfficiencyPct: 60,
+    prefillEfficiencyPct: 40,
+    multiGpuEfficiencyPct: 80
   }
 ];
 
@@ -88,11 +97,11 @@ const guideSections = [
   {
     id: "constraints",
     title: "Mental model",
-    summary: "Anchor the guide in the three physical limits that govern every deployment: fit, feed, and process.",
+    summary: "Anchor the guide in the three physical limits that govern every deployment: fit, feed, and process, then discount spec-sheet peaks into usable hardware.",
     bullets: [
       "VRAM capacity decides whether the model and cache can exist on the card.",
-      "Memory bandwidth usually dominates decode throughput and tokens/sec.",
-      "Compute usually dominates prefill and the lower-bound TTFT story."
+      "Usable memory bandwidth usually dominates decode throughput and tokens/sec.",
+      "Usable compute usually dominates prefill and the lower-bound TTFT story."
     ],
     topicId: "mental-model"
   },
@@ -143,22 +152,22 @@ const guideSections = [
   {
     id: "throughput",
     title: "Decode throughput",
-    summary: "Per-token generation is usually a bandwidth problem, which is why faster HBM often matters more than raw compute.",
+    summary: "Per-token generation is usually a bandwidth problem, which is why usable HBM matters more than raw peak compute.",
     bullets: [
       "Dense decode is tied to total parameter reads.",
       "MoE and MLA decode can feel faster because active parameters are smaller.",
-      "This is a first-order estimate, not a benchmark promise."
+      "Peak bandwidth is discounted by a decode-efficiency assumption before the app uses it."
     ],
     topicId: "decode"
   },
   {
     id: "latency",
     title: "Prefill and TTFT",
-    summary: "Prompt processing behaves differently from decode. It leans harder on compute, prompt length, and scheduler behavior.",
+    summary: "Prompt processing behaves differently from decode. It leans harder on usable compute, prompt length, and scheduler behavior.",
     bullets: [
       "Use total parameters for dense prefill.",
       "Use active parameters for MoE and MLA lower-bound intuition.",
-      "Treat the result as a compute floor, not user-facing truth."
+      "Peak compute is discounted by a prefill-efficiency assumption before the floor is estimated."
     ],
     topicId: "ttft"
   },
@@ -181,20 +190,41 @@ const sidebarTopics = {
     eyebrow: "Control frame",
     summary: "Start with fit, feed, and process. Everything else in the guide hangs off those three limits.",
     detail:
-      "VRAM capacity answers whether the model can be resident at all. Memory bandwidth answers how quickly weights can be streamed during decode. Compute answers how quickly prompt tokens can be processed during prefill. In real serving systems the bottleneck can move, but these three remain the first-order frame.",
-    formula: "Fit → VRAM. Decode → bandwidth. Prefill → compute.",
+      "VRAM capacity answers whether the model can be resident at all. Memory bandwidth answers how quickly weights can be streamed during decode. Compute answers how quickly prompt tokens can be processed during prefill. The important update is that the app now treats hardware peaks as ceilings and then discounts them into usable throughput with separate decode and prefill efficiency assumptions. In real serving systems the bottleneck can move, but these three remain the first-order frame.",
+    formula: "Fit → VRAM. Decode → usable bandwidth. Prefill → usable compute.",
     assumptions: [
       "This is a first-order planning frame.",
-      "Scheduler behavior and runtime kernels can still shift the bottleneck."
+      "Peak specs are not treated as sustained serving throughput."
     ],
     pitfalls: [
       "Treating a single metric as the whole story.",
-      "Using fit numbers as latency promises."
+      "Using raw peak hardware numbers as latency promises."
     ],
     statA: "3",
     statALabel: "Primary constraints",
     statB: "1st",
     statBLabel: "Order of approximation"
+  },
+  "hardware-envelope": {
+    title: "Hardware envelope",
+    eyebrow: "Spec sheet vs real work",
+    summary: "The hardware panel separates spec-sheet ceilings from the share of those ceilings your workload is likely to reach.",
+    detail:
+      "Peak bandwidth and peak compute are the best-case numbers printed on hardware spec sheets for a particular precision path. Real inference rarely reaches those numbers end to end. The app therefore asks for separate efficiency assumptions: one for decode, where memory movement is usually the main limiter, and one for prefill, where math throughput matters more. If you use more than one GPU, a scaling percentage further discounts the ideal N-times speedup to account for coordination and communication overhead.",
+    formula:
+      "usable_decode_bandwidth = peak_bandwidth × decode_efficiency × multi_gpu_scaling\nusable_prefill_compute = peak_compute × prefill_efficiency × multi_gpu_scaling",
+    assumptions: [
+      "Peak fields should match the precision and kernel path you actually care about.",
+      "Efficiency fields are planning heuristics until replaced by measurements."
+    ],
+    pitfalls: [
+      "Using a sparse or marketing peak that your workload does not actually reach.",
+      "Assuming decode and prefill should use the same efficiency."
+    ],
+    statA: "Peaks",
+    statALabel: "Spec-sheet ceilings",
+    statB: "Efficiencies",
+    statBLabel: "Usable-share inputs"
   },
   architecture: {
     title: "Architecture branching",
@@ -279,19 +309,19 @@ const sidebarTopics = {
   decode: {
     title: "Bandwidth-driven decode",
     eyebrow: "Tokens per second",
-    summary: "During decode, the system often behaves like a weight-streaming machine, so bandwidth is the cleanest first-order predictor.",
+    summary: "During decode, the system often behaves like a weight-streaming machine, so usable bandwidth is the cleanest first-order predictor.",
     detail:
-      "The simplified estimate divides the active weight bytes read per token by the available memory bandwidth. Dense models pay with total parameters. MoE and MLA pay with active parameters, which is why sparse models can decode far faster than their storage footprint suggests.",
-    formula: "time_per_token ≈ (P_active × bytes_per_weight) / bandwidth",
+      "The simplified estimate starts by asking how many model-weight bytes must be touched for one generated token. Dense models pay with total parameters. MoE and MLA pay with active parameters, which is why sparse models can decode far faster than their storage footprint suggests. The app then divides that byte cost by usable bandwidth, not raw peak bandwidth. Usable bandwidth is peak bandwidth after a decode-efficiency discount and, when relevant, a multi-GPU scaling discount.",
+    formula: "time_per_token ≈ (P_active × bytes_per_weight) / usable_bandwidth",
     assumptions: [
       "Decode is assumed to be bandwidth-dominant.",
-      "Attention, batching, and kernel efficiency are not fully modeled."
+      "Attention, batching, and kernel efficiency are still simplified."
     ],
     pitfalls: [
       "Treating the estimate as measured production TPS.",
-      "Ignoring interconnect penalties in multi-GPU serving."
+      "Forgetting to discount peak bandwidth before using it."
     ],
-    statA: "Bandwidth",
+    statA: "Usable bandwidth",
     statALabel: "Primary decode driver",
     statB: "P_active",
     statBLabel: "Sparse speed variable"
@@ -301,17 +331,17 @@ const sidebarTopics = {
     eyebrow: "First visible token",
     summary: "Prompt processing is more compute-shaped than decode and scales directly with prompt length.",
     detail:
-      "The simplified TTFT estimate treats prompt processing as a lower-bound compute floor. It is useful for understanding why bigger prompts and bigger models cost more, but it deliberately ignores attention cost, scheduler delay, batching interference, and software overhead. For reasoning-heavy models, hidden internal generation can dominate the perceived wait.",
-    formula: "TTFT_floor ≈ (params × prompt_tokens × 2) / peak_FLOPS",
+      "The simplified TTFT estimate treats prompt processing as a lower-bound compute floor. It is useful for understanding why bigger prompts and bigger models cost more, but it deliberately ignores attention cost, scheduler delay, batching interference, and software overhead. The important change is that the floor is now computed with usable prefill compute rather than raw peak compute. For reasoning-heavy models, hidden internal generation can dominate the perceived wait.",
+    formula: "TTFT_floor ≈ (params × prompt_tokens × 2) / usable_prefill_FLOPS",
     assumptions: [
       "Dense uses total parameters. MoE and MLA use active parameters for lower-bound intuition.",
       "Hidden reasoning tokens can be added separately as an interpretive delay."
     ],
     pitfalls: [
       "Reading the number as user-facing latency.",
-      "Ignoring long hidden chains of thought in reasoning models."
+      "Ignoring the gap between peak compute and usable compute."
     ],
-    statA: "Compute",
+    statA: "Usable compute",
     statALabel: "Primary prefill driver",
     statB: "Prompt length",
     statBLabel: "Direct multiplier"
@@ -341,15 +371,15 @@ const sidebarTopics = {
     eyebrow: "Guide scenario",
     summary: "This panel turns the guide’s worked example into something you can manipulate without losing the original arithmetic.",
     detail:
-      "The default worked example is Velvet 14B on an A100 80GB with an 8k total sequence and a conservative 1.25× overhead. The live controls let you keep the narrative but change the hardware, context, or concurrency assumptions and watch the supporting numbers respond together.",
+      "The default worked example is Velvet 14B on an A100 80GB with an 8k total sequence and a conservative 1.25× overhead. The live controls let you keep the narrative but change the hardware, context, concurrency, and usable-throughput assumptions and watch the supporting numbers respond together.",
     formula: "Defaults match the guide’s example and remain fully editable.",
     assumptions: [
       "The example starts from a dense 14B model at BF16.",
-      "Context scenarios are displayed as total sequence lengths."
+      "Peak hardware fields and efficiency fields can both be edited."
     ],
     pitfalls: [
       "Forgetting that the guide example is memory-first before it is experience-first.",
-      "Comparing scenarios without holding the overhead assumption constant."
+      "Comparing scenarios without holding the hardware-efficiency assumptions constant."
     ],
     statA: "8k",
     statALabel: "Default total sequence",
@@ -361,7 +391,7 @@ const sidebarTopics = {
     eyebrow: "Guide heuristic",
     summary: "This badge uses per-user tokens/sec bands for normal QA / RAG workloads, then applies them to the selected concurrency.",
     detail:
-      "For normal QA / RAG applications, the app classifies the experience from the per-user generation speed after sharing total service throughput across the selected concurrency. The practical bands are: smooth at 20+ tok/s per user, acceptable at 10–20 tok/s per user, poor at 5–10 tok/s per user, and unusable below 5 tok/s per user. The calculation still shows TTFT under load separately, but the experience badge itself is driven by the per-user speed band because that is the clearest interaction signal once concurrency is applied.",
+      "For normal QA / RAG applications, the app classifies the experience from the per-user generation speed after sharing total service throughput across the selected concurrency. The practical bands are: smooth at 20+ tok/s per user, acceptable at 10–20 tok/s per user, poor at 5–10 tok/s per user, and unusable below 5 tok/s per user. The calculation still shows TTFT under load separately, but the experience badge itself is driven by the per-user speed band because that is the clearest interaction signal once concurrency is applied. Because throughput now uses usable bandwidth rather than raw peak bandwidth, the badge is less likely to overstate real serving feel.",
     formula: "per_user_tps = service_throughput / concurrent_users",
     assumptions: [
       "Assumes a reasonably efficient continuous-batching stack for QA / RAG patterns.",
@@ -444,8 +474,8 @@ const state = {
 const topicEnhancements = {
   "weight-vram": {
     guideReferences: [
-      "Inference guide Step 2: Sizing Static VRAM (The Weights)",
-      "Inference guide Worked Example Velvet 14B"
+      "Inference guide Step 2: Sizing static VRAM",
+      "Inference guide Worked example: Velvet 14B on A100 80GB"
     ],
     liveStats(results) {
       return [
@@ -477,9 +507,9 @@ const topicEnhancements = {
   },
   "kv-cache": {
     guideReferences: [
-      "Inference guide Step 3: Sizing Dynamic VRAM (The KV Cache)",
-      "Inference guide What is the “average” context breakdown in standard QA RAG Agents?",
-      "Inference guide Calculating concurrent users"
+      "Inference guide Step 3: Sizing dynamic VRAM (KV cache)",
+      "Inference guide Workload reference: typical QA / RAG context",
+      "Inference guide Estimating concurrent users"
     ],
     liveStats(results) {
       return [
@@ -511,10 +541,10 @@ const topicEnhancements = {
   },
   overhead: {
     guideReferences: [
-      "Inference guide Step 2: Sizing Static VRAM (The Weights)",
-      "Inference guide Step 3: Sizing Dynamic VRAM (The KV Cache)",
-      "Inference guide Step 4: The “Reality Tax” (Overhead)",
-      "Inference guide Worked Example Velvet 14B"
+      "Inference guide Step 2: Sizing static VRAM",
+      "Inference guide Step 3: Sizing dynamic VRAM (KV cache)",
+      "Inference guide Step 4: Adding a planning buffer",
+      "Inference guide Worked example: Velvet 14B on A100 80GB"
     ],
     liveStats(results) {
       return [
@@ -547,14 +577,15 @@ const topicEnhancements = {
   },
   decode: {
     guideReferences: [
-      "Inference guide Step 5: Sizing Throughput (Tokens Per Second)",
-      "Inference guide The throughput matter",
-      "Inference guide this is for a user so how does it feel for concurrent users?"
+      "Inference guide Step 1: Defining the hardware envelope",
+      "Inference guide Step 5: Estimating decode throughput",
+      "Inference guide Interpreting throughput for concurrent users"
     ],
     liveStats(results) {
       return [
         { label: "Active params", value: `${formatNumber(results.activeParamsB, 1)}B` },
-        { label: "Agg. bandwidth", value: `${formatNumber(results.aggregateBandwidthTBps, 2)} TB/s` },
+        { label: "Peak bandwidth", value: `${formatNumber(results.aggregatePeakBandwidthTBps, 2)} TB/s` },
+        { label: "Usable bandwidth", value: `${formatNumber(results.effectiveDecodeBandwidthTBps, 2)} TB/s` },
         { label: "Service TPS", value: `${formatNumber(results.serviceThroughputTps, 0)} tok/s` },
         { label: "Per user", value: `${formatNumber(results.tpsPerUser, 1)} tok/s` }
       ];
@@ -563,14 +594,22 @@ const topicEnhancements = {
       const batchingGain = results.decodeTps > 0 ? results.serviceThroughputTps / results.decodeTps : 0;
       return [
         {
-          label: "Start from the guide's decode baseline",
-          value: `${formatNumber(results.activeParamsB, 1)}B active params at ${formatNumber(results.aggregateBandwidthTBps, 2)} TB/s`,
+          label: "Estimate the weight bytes touched for one generated token",
+          value: `${formatNumber(results.activeParamsB, 1)}B active params × ${formatNumber(state.model.weightBytes, 1)} bytes = ${formatGB(results.activeWeightReadGBPerToken)}`,
           note: "Dense models use total parameters here. MoE and MLA use active parameters, which is why sparse models can store large weights but decode faster."
         },
         {
-          label: "Convert bandwidth into single-stream decode speed",
+          label: "Convert peak bandwidth into usable bandwidth",
+          value:
+            results.gpuCount > 1
+              ? `${formatNumber(results.aggregatePeakBandwidthTBps, 2)} TB/s × ${formatPercent(results.decodeEfficiency)} decode efficiency × ${formatPercent(results.multiGpuEfficiency)} scaling = ${formatNumber(results.effectiveDecodeBandwidthTBps, 2)} TB/s`
+              : `${formatNumber(results.aggregatePeakBandwidthTBps, 2)} TB/s × ${formatPercent(results.decodeEfficiency)} decode efficiency = ${formatNumber(results.effectiveDecodeBandwidthTBps, 2)} TB/s`,
+          note: "This is the key correction for real serving. The app no longer treats peak bandwidth as the same thing as usable throughput."
+        },
+        {
+          label: "Convert usable bandwidth into single-stream decode speed",
           value: `${formatDuration(results.decodeTimePerTokenSec)} per token = ${formatNumber(results.decodeTps, 0)} tok/s`,
-          note: "This is the bandwidth-dominant first-order estimate from the inference guide."
+          note: "This remains a bandwidth-dominant first-order estimate rather than a production benchmark."
         },
         {
           label: "Apply the app's concurrency batching heuristic",
@@ -587,14 +626,15 @@ const topicEnhancements = {
   },
   ttft: {
     guideReferences: [
-      "Inference guide Step 6: Sizing Latency (Time To First Token)",
-      "Inference guide Note about hidden reasoning generation",
-      "Inference guide The throughput matter"
+      "Inference guide Step 1: Defining the hardware envelope",
+      "Inference guide Step 6: Estimating TTFT",
+      "Inference guide Hidden reasoning delay"
     ],
     liveStats(results) {
       const stats = [
         { label: "Prompt", value: formatTokens(state.workload.promptTokens) },
-        { label: "Agg. compute", value: `${formatNumber(results.aggregateComputeTFLOPS, 0)} TFLOPS` },
+        { label: "Peak compute", value: `${formatNumber(results.aggregatePeakComputeTFLOPS, 0)} TFLOPS` },
+        { label: "Usable compute", value: `${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS` },
         { label: "TTFT floor", value: formatDuration(results.ttftFloorSec) },
         { label: "TTFT under load", value: formatDuration(results.ttftUnderLoadSec) }
       ];
@@ -614,8 +654,16 @@ const topicEnhancements = {
           note: "Dense models use total parameters for prefill. MoE and MLA use active parameters for the lower-bound intuition described in the guide."
         },
         {
+          label: "Convert peak compute into usable prefill compute",
+          value:
+            results.gpuCount > 1
+              ? `${formatNumber(results.aggregatePeakComputeTFLOPS, 0)} TFLOPS × ${formatPercent(results.prefillEfficiency)} prefill efficiency × ${formatPercent(results.multiGpuEfficiency)} scaling = ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS`
+              : `${formatNumber(results.aggregatePeakComputeTFLOPS, 0)} TFLOPS × ${formatPercent(results.prefillEfficiency)} prefill efficiency = ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS`,
+          note: "This is where the app now discounts spec-sheet compute before using it for TTFT."
+        },
+        {
           label: "Compute the theoretical TTFT floor",
-          value: `${formatNumber(results.prefillParamsB, 1)}B × ${formatTokens(state.workload.promptTokens)} prompt tokens × 2 ÷ ${formatNumber(results.aggregateComputeTFLOPS, 0)} TFLOPS = ${formatDuration(results.ttftFloorSec)}`,
+          value: `${formatNumber(results.prefillParamsB, 1)}B × ${formatTokens(state.workload.promptTokens)} prompt tokens × 2 ÷ ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS = ${formatDuration(results.ttftFloorSec)}`,
           note: "This follows the guide's lower-bound TTFT framing rather than a production latency promise."
         },
         {
@@ -633,8 +681,8 @@ const topicEnhancements = {
   },
   "workload-reference": {
     guideReferences: [
-      "Inference guide What is the “average” context breakdown in standard QA RAG Agents?",
-      "Inference guide Calculating concurrent users"
+      "Inference guide Workload reference: typical QA / RAG context",
+      "Inference guide Estimating concurrent users"
     ],
     liveStats(results) {
       return [
@@ -660,6 +708,43 @@ const topicEnhancements = {
           label: "Use it as an input sanity check",
           value: `${formatNumber(state.workload.concurrentUsers, 0)} concurrent users at ${formatTokens(results.totalSequenceTokens)} total tokens each`,
           note: "The guide's workload table is not a template. It is a planning reference for deciding whether your workload assumptions are plausible."
+        }
+      ];
+    }
+  },
+  "hardware-envelope": {
+    guideReferences: [
+      "Inference guide Step 1: Defining the hardware envelope",
+      "Inference guide Choosing peak specs without double-counting",
+      "Inference guide Choosing initial efficiency assumptions"
+    ],
+    liveStats(results) {
+      return [
+        { label: "GPU count", value: formatNumber(results.gpuCount, 0) },
+        { label: "Peak bandwidth", value: `${formatNumber(results.aggregatePeakBandwidthTBps, 2)} TB/s` },
+        { label: "Usable bandwidth", value: `${formatNumber(results.effectiveDecodeBandwidthTBps, 2)} TB/s` },
+        { label: "Usable compute", value: `${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS` }
+      ];
+    },
+    walkthrough(results) {
+      return [
+        {
+          label: "Enter the spec-sheet ceilings you want to start from",
+          value: `${formatNumber(state.hardware.bandwidthTBps, 2)} TB/s bandwidth and ${formatNumber(state.hardware.computeTFLOPS, 0)} TFLOPS compute per GPU`,
+          note: "These are headline ceilings. They are not treated as sustained end-to-end serving throughput."
+        },
+        {
+          label: "Choose separate discounts for decode and prefill",
+          value: `${formatNumber(state.hardware.decodeEfficiencyPct, 0)}% decode efficiency and ${formatNumber(state.hardware.prefillEfficiencyPct, 0)}% prefill efficiency`,
+          note: "Decode and prefill stress the hardware differently, so the app keeps their efficiency assumptions separate."
+        },
+        {
+          label: "Apply multi-GPU scaling only when the workload spans devices",
+          value:
+            results.gpuCount > 1
+              ? `${formatNumber(state.hardware.multiGpuEfficiencyPct, 0)}% scaling across ${formatNumber(results.gpuCount, 0)} GPUs`
+              : "Single-GPU scenario, so no scaling discount is applied",
+          note: "This term exists to avoid pretending that two or more GPUs always give perfect linear speedup."
         }
       ];
     }
@@ -692,11 +777,20 @@ function getKvReduction(model) {
   return model.architecture === "mla" ? model.mlaReduction : 1;
 }
 
+function getEfficiencyRatio(percent, fallback = 100) {
+  return clamp((Number(percent) || fallback) / 100, 0.1, 1);
+}
+
 function calculateSizing(model, hardware, workload) {
   const gpuCount = Math.max(1, Math.floor(hardware.gpuCount || 1));
   const totalSystemVramGB = hardware.vramGB * gpuCount;
-  const aggregateBandwidthTBps = hardware.bandwidthTBps * gpuCount;
-  const aggregateComputeTFLOPS = hardware.computeTFLOPS * gpuCount;
+  const aggregatePeakBandwidthTBps = hardware.bandwidthTBps * gpuCount;
+  const aggregatePeakComputeTFLOPS = hardware.computeTFLOPS * gpuCount;
+  const decodeEfficiency = getEfficiencyRatio(hardware.decodeEfficiencyPct);
+  const prefillEfficiency = getEfficiencyRatio(hardware.prefillEfficiencyPct);
+  const multiGpuEfficiency = gpuCount > 1 ? getEfficiencyRatio(hardware.multiGpuEfficiencyPct) : 1;
+  const effectiveDecodeBandwidthTBps = aggregatePeakBandwidthTBps * decodeEfficiency * multiGpuEfficiency;
+  const effectivePrefillComputeTFLOPS = aggregatePeakComputeTFLOPS * prefillEfficiency * multiGpuEfficiency;
   const activeParamsB = getActiveParams(model);
   const prefillParamsB = getPrefillParams(model);
   const totalSequenceTokens = Math.max(1, workload.promptTokens + workload.outputTokens);
@@ -709,17 +803,18 @@ function calculateSizing(model, hardware, workload) {
     getKvReduction(model);
   const kvPerUserGB = (kvPerTokenBytes * totalSequenceTokens) / 1e9;
   const weightMemoryGB = model.totalParamsB * model.weightBytes;
+  const activeWeightReadGBPerToken = activeParamsB * model.weightBytes;
   const totalKvGB = kvPerUserGB * workload.concurrentUsers;
   const usableBudgetGB = totalSystemVramGB / workload.overheadMultiplier;
   const remainingKvBudgetGB = usableBudgetGB - weightMemoryGB;
   const requiredVramGB = (weightMemoryGB + totalKvGB) * workload.overheadMultiplier;
   const fitsInMemory = requiredVramGB <= totalSystemVramGB;
   const decodeTimePerTokenSec =
-    aggregateBandwidthTBps > 0 ? (activeParamsB * model.weightBytes) / aggregateBandwidthTBps / 1000 : Infinity;
+    effectiveDecodeBandwidthTBps > 0 ? activeWeightReadGBPerToken / effectiveDecodeBandwidthTBps / 1000 : Infinity;
   const decodeTps = decodeTimePerTokenSec > 0 ? 1 / decodeTimePerTokenSec : 0;
   const ttftFloorSec =
-    aggregateComputeTFLOPS > 0
-      ? (prefillParamsB * 1e9 * workload.promptTokens * 2) / (aggregateComputeTFLOPS * 1e12)
+    effectivePrefillComputeTFLOPS > 0
+      ? (prefillParamsB * 1e9 * workload.promptTokens * 2) / (effectivePrefillComputeTFLOPS * 1e12)
       : Infinity;
   const memoryBoundConcurrency = kvPerUserGB > 0 ? Math.max(0, Math.floor(remainingKvBudgetGB / kvPerUserGB)) : 0;
   const memoryUtilization = requiredVramGB / totalSystemVramGB;
@@ -777,8 +872,13 @@ function calculateSizing(model, hardware, workload) {
   return {
     gpuCount,
     totalSystemVramGB,
-    aggregateBandwidthTBps,
-    aggregateComputeTFLOPS,
+    aggregatePeakBandwidthTBps,
+    aggregatePeakComputeTFLOPS,
+    effectiveDecodeBandwidthTBps,
+    effectivePrefillComputeTFLOPS,
+    decodeEfficiency,
+    prefillEfficiency,
+    multiGpuEfficiency,
     activeParamsB,
     prefillParamsB,
     totalSequenceTokens,
@@ -786,6 +886,7 @@ function calculateSizing(model, hardware, workload) {
     kvPerUserGB,
     totalKvGB,
     weightMemoryGB,
+    activeWeightReadGBPerToken,
     usableBudgetGB,
     remainingKvBudgetGB,
     requiredVramGB,
@@ -989,13 +1090,13 @@ function renderSectionRail() {
 
 function renderHeroStrip(results) {
   const primarySummary =
-    "Adjust the model, hardware, and workload assumptions, then use the Info buttons to inspect the math, assumptions, and inference-guide references behind each metric.";
+    "Adjust the model, hardware peaks, efficiency assumptions, and workload, then use the Info buttons to inspect the math, assumptions, and inference-guide references behind each metric.";
 
   return `
     <section class="hero-strip">
       <div class="hero-panel">
-        <div class="micro-label">Sizing sandbox</div>
-        <h2 class="hero-title">Change the assumptions and inspect each metric without leaving the calculator.</h2>
+        <div class="micro-label">Calculator-first guide</div>
+        <h2 class="hero-title">Inference Sizing Visualizer</h2>
         <p class="guide-copy">${primarySummary}</p>
         <div class="chip-row">
           <div class="chip"><strong>${state.model.name}</strong> • ${getArchitectureLabel(state.model.architecture)}</div>
@@ -1092,9 +1193,20 @@ function renderControlDeck(results) {
         </div>
       </article>
       <article class="control-group">
-        <div>
-          <div class="micro-label">Hardware</div>
-          <h3>GPU envelope</h3>
+        <div class="control-header">
+          <div>
+            <div class="micro-label">Hardware</div>
+            <h3>GPU envelope</h3>
+          </div>
+          <button
+            type="button"
+            class="control-info-button"
+            data-action="open-topic"
+            data-topic="hardware-envelope"
+            aria-label="Open hardware envelope explanation"
+          >
+            Info
+          </button>
         </div>
         <div class="field">
           <span>Preset</span>
@@ -1119,19 +1231,27 @@ function renderControlDeck(results) {
             <input data-group="hardware" data-field="vramGB" type="number" min="1" step="1" value="${state.hardware.vramGB}" />
           </label>
           <label class="field">
-            <span>Bandwidth (TB/s)</span>
+            <span>Peak bandwidth (TB/s)</span>
             <input data-group="hardware" data-field="bandwidthTBps" type="number" min="0.1" step="0.01" value="${state.hardware.bandwidthTBps}" />
           </label>
           <label class="field">
-            <span>Compute (TFLOPS)</span>
+            <span>Peak compute (TFLOPS)</span>
             <input data-group="hardware" data-field="computeTFLOPS" type="number" min="1" step="1" value="${state.hardware.computeTFLOPS}" />
           </label>
+          <label class="field">
+            <span>Decode efficiency (%)</span>
+            <input data-group="hardware" data-field="decodeEfficiencyPct" type="number" min="10" max="100" step="1" value="${state.hardware.decodeEfficiencyPct}" />
+          </label>
+          <label class="field">
+            <span>Prefill efficiency (%)</span>
+            <input data-group="hardware" data-field="prefillEfficiencyPct" type="number" min="10" max="100" step="1" value="${state.hardware.prefillEfficiencyPct}" />
+          </label>
+          <label class="field">
+            <span>Multi-GPU scaling (%)</span>
+            <input data-group="hardware" data-field="multiGpuEfficiencyPct" type="number" min="10" max="100" step="1" value="${state.hardware.multiGpuEfficiencyPct}" />
+          </label>
         </div>
-        <div class="footer-note">
-          <div class="metric-label">Budget after overhead</div>
-          <div class="summary-value">${formatGB(results.usableBudgetGB)}</div>
-          <div class="support-copy">Usable planning budget after overhead across ${formatNumber(results.gpuCount, 0)} GPUs.</div>
-        </div>
+        <div class="support-copy">Peak fields are spec-sheet ceilings. Percentage fields discount those ceilings into usable throughput for planning.</div>
       </article>
       <article class="control-group">
         <div class="control-header">
@@ -1207,12 +1327,12 @@ function renderGuideVisual(sectionId, results) {
         <button type="button" class="visual-button three-up" data-action="focus-topic" data-topic="decode">
           <div class="section-kicker">Feed</div>
           <strong>${formatNumber(results.decodeTps, 0)} tok/s</strong>
-          <div class="support-copy">Bandwidth-led decode estimate from active weight reads.</div>
+          <div class="support-copy">Bandwidth-led decode estimate from active weight reads and usable bandwidth.</div>
         </button>
         <button type="button" class="visual-button three-up" data-action="focus-topic" data-topic="ttft">
           <div class="section-kicker">Process</div>
           <strong>${formatDuration(results.ttftFloorSec)}</strong>
-          <div class="support-copy">Compute-led prefill floor for the visible prompt.</div>
+          <div class="support-copy">Compute-led prefill floor from usable prefill compute.</div>
         </button>
       </div>
     `;
@@ -1337,7 +1457,7 @@ function renderGuideVisual(sectionId, results) {
         <button type="button" class="visual-button half" data-action="focus-topic" data-topic="decode">
           <div class="section-kicker">Decode time per token</div>
           <strong>${formatDuration(results.decodeTimePerTokenSec)}</strong>
-          <div class="support-copy">Derived from ${formatNumber(results.activeParamsB, 1)}B active params and ${formatNumber(state.hardware.bandwidthTBps, 2)} TB/s bandwidth.</div>
+          <div class="support-copy">Derived from ${formatNumber(results.activeParamsB, 1)}B active params and ${formatNumber(results.effectiveDecodeBandwidthTBps, 2)} TB/s usable bandwidth.</div>
         </button>
         <div class="visual-panel half">
           <div class="metric-label">Throughput split</div>
@@ -1362,7 +1482,7 @@ function renderGuideVisual(sectionId, results) {
         <button type="button" class="visual-button half" data-action="focus-topic" data-topic="ttft">
           <div class="section-kicker">Prompt processing floor</div>
           <strong>${formatDuration(results.ttftFloorSec)}</strong>
-          <div class="support-copy">Prompt tokens: ${formatTokens(state.workload.promptTokens)} • effective prefill params: ${formatNumber(results.prefillParamsB, 1)}B</div>
+          <div class="support-copy">Prompt tokens: ${formatTokens(state.workload.promptTokens)} • usable prefill compute: ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS</div>
         </button>
         <div class="visual-panel half">
           <div class="metric-label">Reasoning-aware answer start</div>
@@ -1470,12 +1590,12 @@ function renderSandboxView(results) {
           ${renderMetricHeader("Service throughput", "decode")}
           <div class="metric-value">${formatNumber(results.serviceThroughputTps, 0)} tok/s</div>
           <div class="metric-subtext"><strong>${formatNumber(results.tpsPerUser, 1)} tok/s per user</strong> at the selected concurrency.</div>
-          <div class="metric-subtext">Concurrency-aware throughput using the QA / RAG per-user speed heuristic.</div>
+          <div class="metric-subtext">Concurrency-aware throughput from usable decode bandwidth plus the QA / RAG per-user speed heuristic.</div>
         </article>
         <article class="metric-card cyan">
           ${renderMetricHeader("TTFT under load", "ttft")}
           <div class="metric-value">${formatDuration(results.ttftUnderLoadSec)}</div>
-          <div class="metric-subtext">Relative to a theoretical floor of ${formatDuration(results.ttftFloorSec)}.</div>
+          <div class="metric-subtext">Relative to a usable-compute floor of ${formatDuration(results.ttftFloorSec)}.</div>
         </article>
         <article class="metric-card ${experienceClass === "comfortable" ? "success" : experienceClass === "tight" ? "accent" : "warning"}">
           ${renderMetricHeader("Typical experience")}
@@ -1498,7 +1618,7 @@ function renderSandboxView(results) {
             <div class="metric-label">Budget after overhead</div>
             <div class="topic-stat" style="margin-top: 10px;">${formatGB(results.usableBudgetGB)}</div>
             <div class="support-copy" style="margin-top: 8px;">Usable planning budget across ${formatNumber(results.gpuCount, 0)} GPUs. Planned demand is combined weights + total cache × ${formatNumber(state.workload.overheadMultiplier, 2)}.</div>
-            <div class="support-copy" style="margin-top: 8px;">Multi-GPU values assume near-ideal aggregation; real tensor parallelism, interconnect, and runtime overhead can reduce throughput and usable capacity.</div>
+            <div class="support-copy" style="margin-top: 8px;">Speed uses peak hardware discounted into usable bandwidth and usable compute. Multi-GPU scenarios also apply the selected scaling discount instead of assuming perfect linear speedup.</div>
             <div class="stack-meter" style="margin-top: 12px;">
               <div class="${results.fitsInMemory ? "stack-fill" : "stack-over"}" style="width: ${clamp((results.requiredVramGB / results.totalSystemVramGB) * 100, 0, 100)}%"></div>
             </div>
@@ -1675,7 +1795,7 @@ function renderAttentionNote() {
     <div class="attention-note" role="note" aria-label="Sizing caution">
       <div class="attention-label">Attention</div>
       <div class="attention-copy">
-        This is a broad theoretical sizing guide for understanding memory, throughput, latency, and concurrency tradeoffs. Actual results can vary materially based on runtime, batching, kernels, interconnect, scheduler behavior, and implementation details.
+        This is a broad planning guide for understanding memory, throughput, latency, and concurrency tradeoffs. The app now separates peak hardware specs from usable throughput assumptions, but actual results can still vary materially based on runtime, batching, kernels, interconnect, scheduler behavior, and implementation details.
       </div>
     </div>
   `;
@@ -1691,14 +1811,6 @@ function renderApp() {
 
   app.innerHTML = `
     <div class="app-shell" style="--sidebar-width: ${state.sidebarWidth}px;">
-      <header class="masthead">
-        <div class="masthead-grid">
-          <h1>Use the sizing sandbox directly, then open metric info when you want the derivation.</h1>
-          <p>
-            The app now stays in calculator mode. Each metric sidebar explains the math, assumptions, and matching inference-guide sections without sending you to a separate guide view.
-          </p>
-        </div>
-      </header>
       <div class="workspace ${workspaceClass}">
         <main class="main-column">
           ${renderHeroStrip(results)}
@@ -1797,12 +1909,17 @@ document.addEventListener("change", (event) => {
   }
 
   state.selectedTopicId =
+    group === "preset" && field === "model"
+      ? "weight-vram"
+      : group === "preset" && field === "hardware"
+        ? "hardware-envelope"
+        :
     group === "model"
       ? field === "architecture"
         ? "architecture"
         : "weight-vram"
       : group === "hardware"
-        ? "decode"
+        ? "hardware-envelope"
         : field === "overheadMultiplier"
           ? "overhead"
           : "concurrency";

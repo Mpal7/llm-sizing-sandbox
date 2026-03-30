@@ -1,11 +1,12 @@
 # Inference Sizing Visualizer
 
-Static browser-based visualizer for `Inference-sizing-and-performance-guide-v3.1.md`.
+Static browser-based visualizer for [Inference-sizing-and-performance-guide-v3.1.md](./Inference-sizing-and-performance-guide-v3.1.md).
 
 ## What it includes
 
-- guided explainer mode
+- calculator-first UI with embedded guide sidebars and derivations
 - sandbox mode with editable model, hardware, and workload assumptions
+- hardware controls that separate spec-sheet peaks from usable throughput assumptions
 - worked-example mode for the Velvet 14B / A100 scenario
 - clickable visual elements that drive a deep-explanation sidebar
 
