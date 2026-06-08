@@ -1820,6 +1820,7 @@ function renderApp() {
         </main>
         ${state.sidebarOpen ? renderSidebar(results) : ""}
       </div>
+      <div class="developed-by">Developed by Matteo Paliani</div>
     </div>
   `;
 }
