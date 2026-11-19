@@ -2,58 +2,102 @@ const modelPresets = [
   {
     id: "velvet-14b",
     name: "Velvet 14B",
-    architecture: "dense",
+    parameterization: "dense",
     totalParamsB: 14,
     activeParamsB: 14,
     layers: 50,
     attentionHeads: 40,
+    attentionType: "gqa",
     kvHeads: 8,
     headDim: 128,
+    mlaKvRank: 512,
+    mlaRopeDim: 64,
+    mlaQkNopeDim: 128,
+    mlaValueHeadDim: 128,
+    sparseAttentionTopK: 0,
+    indexerHeads: 0,
+    indexerHeadDim: 0,
+    indexerCacheBytes: 0,
+    maxContextTokens: 0,
+    slidingWindowLayers: 0,
+    slidingWindowTokens: 4096,
     weightBytes: 2,
-    kvBytes: 2,
-    mlaReduction: 0.08
+    kvBytes: 2
   },
   {
     id: "dense-70b",
     name: "Dense 70B",
-    architecture: "dense",
+    parameterization: "dense",
     totalParamsB: 70,
     activeParamsB: 70,
     layers: 80,
     attentionHeads: 64,
+    attentionType: "gqa",
     kvHeads: 8,
     headDim: 128,
+    mlaKvRank: 512,
+    mlaRopeDim: 64,
+    mlaQkNopeDim: 128,
+    mlaValueHeadDim: 128,
+    sparseAttentionTopK: 0,
+    indexerHeads: 0,
+    indexerHeadDim: 0,
+    indexerCacheBytes: 0,
+    maxContextTokens: 0,
+    slidingWindowLayers: 0,
+    slidingWindowTokens: 4096,
     weightBytes: 2,
-    kvBytes: 2,
-    mlaReduction: 0.08
+    kvBytes: 2
   },
   {
     id: "moe-47b",
     name: "MoE 47B / 13B active",
-    architecture: "moe",
+    parameterization: "moe",
     totalParamsB: 47,
     activeParamsB: 13,
     layers: 32,
     attentionHeads: 32,
+    attentionType: "gqa",
     kvHeads: 8,
     headDim: 128,
+    mlaKvRank: 512,
+    mlaRopeDim: 64,
+    mlaQkNopeDim: 128,
+    mlaValueHeadDim: 128,
+    sparseAttentionTopK: 0,
+    indexerHeads: 0,
+    indexerHeadDim: 0,
+    indexerCacheBytes: 0,
+    maxContextTokens: 0,
+    slidingWindowLayers: 0,
+    slidingWindowTokens: 4096,
     weightBytes: 2,
-    kvBytes: 2,
-    mlaReduction: 0.08
+    kvBytes: 2
   },
   {
-    id: "mla-671b",
-    name: "MLA 671B / 37B active",
-    architecture: "mla",
-    totalParamsB: 671,
+    id: "deepseek-v32",
+    name: "DeepSeek V3.2 · MoE + MLA + DSA",
+    parameterization: "moe",
+    totalParamsB: 685,
     activeParamsB: 37,
     layers: 61,
     attentionHeads: 128,
+    attentionType: "mla",
     kvHeads: 8,
     headDim: 128,
-    weightBytes: 2,
-    kvBytes: 2,
-    mlaReduction: 0.08
+    mlaKvRank: 512,
+    mlaRopeDim: 64,
+    mlaQkNopeDim: 128,
+    mlaValueHeadDim: 128,
+    sparseAttentionTopK: 2048,
+    indexerHeads: 64,
+    indexerHeadDim: 128,
+    indexerCacheBytes: 1,
+    maxContextTokens: 163840,
+    slidingWindowLayers: 0,
+    slidingWindowTokens: 4096,
+    weightBytes: 1,
+    kvBytes: 1
   }
 ];
 
@@ -66,6 +110,7 @@ const hardwarePresets = [
     bandwidthTBps: 2.039,
     computeTFLOPS: 312,
     decodeEfficiencyPct: 70,
+    decodeComputeEfficiencyPct: 35,
     prefillEfficiencyPct: 50,
     multiGpuEfficiencyPct: 90
   },
@@ -77,7 +122,80 @@ const hardwarePresets = [
     bandwidthTBps: 3.35,
     computeTFLOPS: 989,
     decodeEfficiencyPct: 75,
+    decodeComputeEfficiencyPct: 40,
     prefillEfficiencyPct: 55,
+    multiGpuEfficiencyPct: 90
+  },
+  {
+    id: "h200-141",
+    name: "H200 141GB",
+    gpuCount: 1,
+    vramGB: 141,
+    bandwidthTBps: 4.8,
+    computeTFLOPS: 989,
+    decodeEfficiencyPct: 75,
+    decodeComputeEfficiencyPct: 40,
+    prefillEfficiencyPct: 55,
+    multiGpuEfficiencyPct: 90
+  },
+  {
+    id: "b200-180",
+    name: "B200 180GB",
+    gpuCount: 1,
+    vramGB: 180,
+    bandwidthTBps: 8,
+    computeTFLOPS: 2250,
+    decodeEfficiencyPct: 75,
+    decodeComputeEfficiencyPct: 45,
+    prefillEfficiencyPct: 55,
+    multiGpuEfficiencyPct: 90
+  },
+  {
+    id: "b300-270",
+    name: "NVIDIA B300 270GB",
+    gpuCount: 1,
+    vramGB: 270,
+    bandwidthTBps: 7.7,
+    computeTFLOPS: 2250,
+    decodeEfficiencyPct: 75,
+    decodeComputeEfficiencyPct: 45,
+    prefillEfficiencyPct: 55,
+    multiGpuEfficiencyPct: 90
+  },
+  {
+    id: "rubin-288-preliminary",
+    name: "NVIDIA Rubin 288GB · preliminary",
+    gpuCount: 1,
+    vramGB: 288,
+    bandwidthTBps: 22,
+    computeTFLOPS: 4000,
+    decodeEfficiencyPct: 75,
+    decodeComputeEfficiencyPct: 45,
+    prefillEfficiencyPct: 55,
+    multiGpuEfficiencyPct: 90
+  },
+  {
+    id: "mi300x-192",
+    name: "AMD MI300X 192GB",
+    gpuCount: 1,
+    vramGB: 192,
+    bandwidthTBps: 5.3,
+    computeTFLOPS: 1307,
+    decodeEfficiencyPct: 70,
+    decodeComputeEfficiencyPct: 40,
+    prefillEfficiencyPct: 50,
+    multiGpuEfficiencyPct: 90
+  },
+  {
+    id: "mi355x-288",
+    name: "AMD MI355X 288GB",
+    gpuCount: 1,
+    vramGB: 288,
+    bandwidthTBps: 8,
+    computeTFLOPS: 2500,
+    decodeEfficiencyPct: 70,
+    decodeComputeEfficiencyPct: 40,
+    prefillEfficiencyPct: 50,
     multiGpuEfficiencyPct: 90
   },
   {
@@ -86,8 +204,9 @@ const hardwarePresets = [
     gpuCount: 1,
     vramGB: 24,
     bandwidthTBps: 1.008,
-    computeTFLOPS: 330,
+    computeTFLOPS: 165.2,
     decodeEfficiencyPct: 60,
+    decodeComputeEfficiencyPct: 25,
     prefillEfficiencyPct: 40,
     multiGpuEfficiencyPct: 80
   }
@@ -108,11 +227,11 @@ const guideSections = [
   {
     id: "architecture",
     title: "Architecture class",
-    summary: "Dense, MoE, and MLA look similar on paper but expose very different serving behavior once you map active parameters and KV shape.",
+    summary: "Parameter routing and attention-cache layout are separate design choices, and modern models can combine them.",
     bullets: [
-      "Dense uses every parameter every token.",
-      "MoE stores the full model but activates only a subset per token.",
-      "MLA keeps the same sparse intuition while shrinking KV pressure."
+      "Dense or MoE determines how many parameters are active per token.",
+      "GQA or MLA determines the main attention KV state held per token.",
+      "DeepSeek V3.2 adds a sparse-attention indexer and its own cache."
     ],
     topicId: "architecture"
   },
@@ -140,12 +259,12 @@ const guideSections = [
   },
   {
     id: "overhead",
-    title: "Reality tax",
-    summary: "A deployment that mathematically fits can still be unstable once allocator behavior and runtime workspace enter the picture.",
+    title: "Memory margin",
+    summary: "Reserve room for runtime allocations, workspaces, fragmentation, and per-device imbalance.",
     bullets: [
-      "Use a planning buffer instead of aiming for 99% utilization.",
-      "Treat 1.25× as a conservative planning heuristic, not a law.",
-      "Adjust once you measure the real stack."
+      "The multiplier is a safety assumption, not measured runtime overhead.",
+      "The cluster fit assumes even sharding across selected GPUs.",
+      "Use measured per-GPU free memory for deployment decisions."
     ],
     topicId: "overhead"
   },
@@ -163,22 +282,22 @@ const guideSections = [
   {
     id: "latency",
     title: "Prefill and TTFT",
-    summary: "Prompt processing behaves differently from decode. It leans harder on usable compute, prompt length, and scheduler behavior.",
+    summary: "Prompt processing has a compute floor plus attention work that grows with prompt length.",
     bullets: [
       "Use total parameters for dense prefill.",
-      "Use active parameters for MoE and MLA lower-bound intuition.",
-      "Peak compute is discounted by a prefill-efficiency assumption before the floor is estimated."
+      "Use active parameters for MoE; MLA alone does not imply sparse parameter activation.",
+      "The floor includes an approximate causal-attention FLOP estimate."
     ],
     topicId: "ttft"
   },
   {
     id: "concurrency",
-    title: "Concurrency and feel",
-    summary: "Memory capacity tells you how many requests can fit. User experience depends on how that capacity collides with decode share and scheduling.",
+    title: "Concurrency capacity",
+    summary: "Memory capacity gives a rough fit ceiling; latency and SLO capacity need a serving benchmark.",
     bullets: [
       "Fit is necessary but not sufficient.",
       "Context size is the fastest way to collapse density.",
-      "A rough operating zone is often more useful than a single magic number."
+      "A fit count does not predict queueing, latency, or service quality."
     ],
     topicId: "concurrency"
   }
@@ -227,21 +346,22 @@ const sidebarTopics = {
     statBLabel: "Usable-share inputs"
   },
   architecture: {
-    title: "Architecture branching",
+    title: "Model architecture",
     eyebrow: "Decision point",
-    summary: "Pick the class first. The same arithmetic means different things depending on what is stored, what is active, and what is compressed.",
+    summary: "Parameter routing and attention/cache layout are independent design choices.",
     detail:
-      "Dense models couple storage and speed because every parameter is read for every token. MoE splits those concerns: total parameters set the storage bill, active parameters set most of the speed bill. MLA preserves the sparse intuition while compressing the KV representation, which changes the capacity curve again.",
-    formula: "Dense: storage = speed. MoE: storage ≠ speed. MLA: storage ≠ speed and KV shrinks.",
+      "Dense models activate all parameters. MoE models store all parameters but activate a configured subset per token. GQA reduces KV heads; MLA stores a latent KV vector plus positional key dimensions. DeepSeek V3.2 combines MoE and MLA with DSA, which selects top-k context positions using a separate indexer cache. Its preset's 37B active count is an estimate carried forward from the V3 report; change it if you have a better measured or published count.",
+    formula: "Weights = P_total × bytes/weight\nGQA KV/token/layer = 2 × KV_heads × head_dim × bytes\nMLA KV/token/layer = (KV_rank + RoPE_dim) × bytes + optional indexer cache",
     assumptions: [
       "Preset labels are editable and intended as planning seeds.",
       "Use exact config values when finalizing a deployment."
     ],
     pitfalls: [
-      "Using total parameters everywhere for MoE.",
-      "Ignoring MLA-specific KV compression."
+      "Using active parameters to size stored MoE weights.",
+      "Treating MLA as an alternative to MoE.",
+      "Using a guessed MLA reduction factor instead of model dimensions."
     ],
-    statA: "Dense / MoE / MLA",
+    statA: "Dense / MoE / GQA / MLA / DSA",
     statALabel: "Classes supported",
     statB: "Wrong class",
     statBLabel: "Invalidates downstream math"
@@ -255,7 +375,7 @@ const sidebarTopics = {
     formula: "VRAM_weights = P_total × bytes_per_weight",
     assumptions: [
       "Total parameters always drive storage.",
-      "Displayed values use decimal GB for consistency with the guide."
+      "Displayed values use decimal GB (1 GB = 1,000,000,000 bytes)."
     ],
     pitfalls: [
       "Confusing raw weight size with total deployment VRAM.",
@@ -269,17 +389,19 @@ const sidebarTopics = {
   "kv-cache": {
     title: "KV cache",
     eyebrow: "Context pressure",
-    summary: "This is the cost of remembering the sequence, and it is the main reason long context crushes concurrency.",
+    summary: "KV memory depends on the model's cache representation and retained context.",
     detail:
-      "KV cache scales with layers, sequence length, KV heads, head dimension, and cache precision. Multiply it by the number of active requests and the dynamic memory bill grows fast. GQA lowers the multiplier by reducing KV heads. MLA lowers it again through compression, which is why the same headline context window can behave very differently across architectures.",
-    formula: "KV = 2 × layers × seq × kv_heads × head_dim × bytes_per_kv × MLA_factor",
+      "GQA stores keys and values for each KV head. MLA stores a latent KV vector plus its positional key dimensions. DSA adds a per-layer indexer key cache and attends to a top-k subset after scoring the context. Sliding-window layers retain only their configured window. Runtime block rounding, cache quantization metadata, and shared prefixes can change the actual allocation.",
+    formula: "GQA: layers × seq × 2 × KV_heads × head_dim × cache_bytes\nMLA: layers × seq × ((KV_rank + RoPE_dim) × cache_bytes + indexer_dim × indexer_bytes)",
     assumptions: [
-      "MLA is modeled with an editable reduction factor.",
-      "Numbers remain first-order estimates and not runtime telemetry."
+      "MLA dimensions are modeled directly, not as a guessed reduction percentage.",
+      "Sliding-window layers use min(sequence, window) tokens.",
+      "Quantization metadata and runtime block rounding are omitted."
     ],
     pitfalls: [
       "Using attention heads instead of KV heads.",
-      "Forgetting that output tokens also extend the sequence."
+      "Forgetting that output and hidden reasoning tokens extend the live sequence.",
+      "Assuming sparse attention means the indexer does not scan the retained context."
     ],
     statA: "Linear",
     statALabel: "Growth with sequence",
@@ -287,59 +409,61 @@ const sidebarTopics = {
     statBLabel: "Growth with users"
   },
   overhead: {
-    title: "Reality tax",
-    eyebrow: "Stability margin",
-    summary: "The planning multiplier exists because exact fits are fragile in real inference runtimes.",
+    title: "Memory margin",
+    eyebrow: "Safety factor",
+    summary: "The selected factor reserves space for runtime allocations and uncertainty.",
     detail:
-      "A system that appears to fit at near-total utilization often becomes unstable once allocator behavior, transient kernel workspace, and runtime-reserved memory enter the picture. The app exposes the overhead multiplier directly so you can feel how aggressively density drops as your confidence margin increases.",
-    formula: "Total_VRAM ≈ (weights + total_KV) × overhead",
+      "The calculator multiplies weights plus live KV by the chosen factor. That factor is an editable planning assumption, not a measured property of the model or runtime. Aggregate GPU capacity assumes even sharding and can miss replicated layers, uneven rank loads, communication buffers, and runtime-specific reservations.",
+    formula: "Planning demand = (weights + live KV) × safety factor",
     assumptions: [
-      "1.25× is the conservative default from the guide.",
-      "Tuned stacks may run closer to 1.10×."
+      "The 1.25× default is a starting assumption.",
+      "Use measured free memory per device for a deployment decision."
     ],
     pitfalls: [
-      "Treating 1.25× as a physical constant.",
-      "Planning around 98–99% VRAM utilization."
+      "Treating the factor as measured runtime overhead.",
+      "Treating aggregate cluster VRAM as proof that every rank fits."
     ],
-    statA: "1.10×–1.25×",
-    statALabel: "Typical planning band",
-    statB: "Headroom",
-    statBLabel: "Buys stability"
+    statA: "1.25×",
+    statALabel: "Editable default",
+    statB: "Assumption",
+    statBLabel: "Replace with measurements"
   },
   decode: {
-    title: "Bandwidth-driven decode",
+    title: "Decode roofline",
     eyebrow: "Tokens per second",
-    summary: "During decode, the system often behaves like a weight-streaming machine, so usable bandwidth is the cleanest first-order predictor.",
+    summary: "The estimate compares memory-bandwidth and compute ceilings for a single sequence and packed batch.",
     detail:
-      "The simplified estimate starts by asking how many model-weight bytes must be touched for one generated token. Dense models pay with total parameters. MoE and MLA pay with active parameters, which is why sparse models can decode far faster than their storage footprint suggests. The app then divides that byte cost by usable bandwidth, not raw peak bandwidth. Usable bandwidth is peak bandwidth after a decode-efficiency discount and, when relevant, a multi-GPU scaling discount.",
-    formula: "time_per_token ≈ (P_active × bytes_per_weight) / usable_bandwidth",
+      "The single-sequence roofline is the smaller of the active-weight HBM bound and the matrix-compute bound. Packed-batch throughput is shown as a theoretical range: dense models reuse one weight set across the batch, while MoE traffic depends on how many distinct experts are routed. Attention reads, scheduler gaps, communication, and kernel effects still need measurement.",
+    formula: "Single-stream TPS ≤ min(HBM bytes/s ÷ active weight bytes, compute FLOPs/s ÷ (2 × P_active))\nPacked-batch TPS depends on weight reuse, routing, and scheduling.",
     assumptions: [
-      "Decode is assumed to be bandwidth-dominant.",
-      "Attention, batching, and kernel efficiency are still simplified."
+      "Decode uses active parameters and a selected hardware efficiency assumption.",
+      "MoE batch traffic is a range because expert overlap is unknown.",
+      "The batch bound assumes all selected requests decode together."
     ],
     pitfalls: [
       "Treating the estimate as measured production TPS.",
-      "Forgetting to discount peak bandwidth before using it."
+      "Reading the roofline as measured production tokens per second."
     ],
     statA: "Usable bandwidth",
     statALabel: "Primary decode driver",
     statB: "P_active",
-    statBLabel: "Sparse speed variable"
+    statBLabel: "MoE active-count input"
   },
   ttft: {
-    title: "Prefill and TTFT",
+    title: "Prefill and first token",
     eyebrow: "First visible token",
-    summary: "Prompt processing is more compute-shaped than decode and scales directly with prompt length.",
+    summary: "The prompt floor counts model work and causal attention, then divides by assumed usable compute.",
     detail:
-      "The simplified TTFT estimate treats prompt processing as a lower-bound compute floor. It is useful for understanding why bigger prompts and bigger models cost more, but it deliberately ignores attention cost, scheduler delay, batching interference, and software overhead. The important change is that the floor is now computed with usable prefill compute rather than raw peak compute. For reasoning-heavy models, hidden internal generation can dominate the perceived wait.",
-    formula: "TTFT_floor ≈ (params × prompt_tokens × 2) / usable_prefill_FLOPS",
+      "This estimate counts two FLOPs per active parameter per prompt token plus approximate causal-attention work, then divides by discounted peak compute. For DSA it estimates top-k attention pairs and full-context indexer scoring. It remains a compute floor: projection details, routing, queueing, chunked prefill, memory stalls, launch overhead, and kernel efficiency can make real TTFT much longer. Hidden reasoning may delay the first visible answer token depending on the model and server.",
+    formula: "Prefill FLOPs ≈ 2 × P_active × prompt + attention/indexer FLOPs\nCompute floor = prefill FLOPs ÷ usable compute",
     assumptions: [
-      "Dense uses total parameters. MoE and MLA use active parameters for lower-bound intuition.",
-      "Hidden reasoning tokens can be added separately as an interpretive delay."
+      "Dense uses total parameters; MoE uses configured active parameters.",
+      "The attention term uses configured dimensions; DSA adds an approximate indexer scoring term.",
+      "The hidden-token delay is a single-stream lower bound, not a latency prediction."
     ],
     pitfalls: [
       "Reading the number as user-facing latency.",
-      "Ignoring the gap between peak compute and usable compute."
+      "Ignoring queueing, memory stalls, or server scheduling."
     ],
     statA: "Usable compute",
     statALabel: "Primary prefill driver",
@@ -347,15 +471,15 @@ const sidebarTopics = {
     statBLabel: "Direct multiplier"
   },
   concurrency: {
-    title: "Concurrency envelope",
-    eyebrow: "Capacity vs feel",
-    summary: "Memory-bound concurrency is a fit number. Experience quality depends on how many users are competing for the same decode budget.",
+    title: "Concurrency capacity",
+    eyebrow: "Memory fit ceiling",
+    summary: "The result is a rough request-fit ceiling, not an SLO capacity.",
     detail:
-      "The app computes the maximum number of requests that can fit in VRAM for a given total sequence length and overhead assumption. It then combines memory pressure and tokens/sec per active user into a simple operating-zone badge. That badge is intentionally interpretive: it exists to guide planning conversations, not replace production measurements.",
+      "The calculator divides the cache budget remaining after weights by the cache estimate for one request. It assumes every request has the selected sequence length, the model is evenly sharded, and no prefix blocks are shared. Runtime block allocation, prefix caching, preemption, scheduler admission, and per-GPU placement can change actual capacity. Throughput and latency SLO capacity need a benchmark with the target model, runtime, and traffic mix.",
     formula: "max_users ≈ (usable_VRAM - weights) / KV_per_user",
     assumptions: [
       "Usable VRAM is total VRAM divided by the selected overhead multiplier.",
-      "Typical-experience rating uses guide-aligned heuristic thresholds."
+      "Shared-prefix cache savings and scheduler admission limits are not modeled."
     ],
     pitfalls: [
       "Treating fit as a guarantee of smooth latency.",
@@ -363,22 +487,22 @@ const sidebarTopics = {
     ],
     statA: "Memory-bound",
     statALabel: "Capacity estimate",
-    statB: "Heuristic",
-    statBLabel: "Experience badge"
+    statB: "Estimate",
+    statBLabel: "Not an SLO"
   },
   "worked-example": {
     title: "Velvet 14B example",
-    eyebrow: "Guide scenario",
-    summary: "This panel turns the guide’s worked example into something you can manipulate without losing the original arithmetic.",
+    eyebrow: "Illustrative scenario",
+    summary: "A small editable example for seeing how the inputs move memory and throughput bounds.",
     detail:
-      "The default worked example is Velvet 14B on an A100 80GB with an 8k total sequence and a conservative 1.25× overhead. The live controls let you keep the narrative but change the hardware, context, concurrency, and usable-throughput assumptions and watch the supporting numbers respond together.",
-    formula: "Defaults match the guide’s example and remain fully editable.",
+      "The starting example uses Velvet 14B on an A100 80GB with an 8k total sequence and a 1.25× safety factor. Velvet is an illustrative model config; replace its values with the checkpoint and runtime you plan to serve.",
+    formula: "Illustrative defaults; all model, hardware, and workload fields are editable.",
     assumptions: [
       "The example starts from a dense 14B model at BF16.",
       "Peak hardware fields and efficiency fields can both be edited."
     ],
     pitfalls: [
-      "Forgetting that the guide example is memory-first before it is experience-first.",
+      "Treating the illustrative model name as a published checkpoint.",
       "Comparing scenarios without holding the hardware-efficiency assumptions constant."
     ],
     statA: "8k",
@@ -386,35 +510,15 @@ const sidebarTopics = {
     statB: "A100 80GB",
     statBLabel: "Default hardware"
   },
-  "operating-zone": {
-    title: "Typical experience",
-    eyebrow: "Guide heuristic",
-    summary: "This badge uses per-user tokens/sec bands for normal QA / RAG workloads, then applies them to the selected concurrency.",
-    detail:
-      "For normal QA / RAG applications, the app classifies the experience from the per-user generation speed after sharing total service throughput across the selected concurrency. The practical bands are: smooth at 20+ tok/s per user, acceptable at 10–20 tok/s per user, poor at 5–10 tok/s per user, and unusable below 5 tok/s per user. The calculation still shows TTFT under load separately, but the experience badge itself is driven by the per-user speed band because that is the clearest interaction signal once concurrency is applied. Because throughput now uses usable bandwidth rather than raw peak bandwidth, the badge is less likely to overstate real serving feel.",
-    formula: "per_user_tps = service_throughput / concurrent_users",
-    assumptions: [
-      "Assumes a reasonably efficient continuous-batching stack for QA / RAG patterns.",
-      "Uses per-user tok/s bands as a broad heuristic, not a benchmark."
-    ],
-    pitfalls: [
-      "Treating the label as a production benchmark.",
-      "Ignoring interconnect, runtime, and tail-latency effects at higher concurrency."
-    ],
-    statA: "20+ / 10–20 / 5–10 / <5",
-    statALabel: "Tok/s per user bands",
-    statB: "Smooth / Acceptable / Poor / Unusable",
-    statBLabel: "QA / RAG feel"
-  },
   "workload-reference": {
-    title: "Workload reference",
-    eyebrow: "QA / RAG context",
-    summary: "This table is a reference for context in a QA / RAG application when sizing the workload inputs.",
+    title: "Workload mix example",
+    eyebrow: "Illustrative context",
+    summary: "Use these rough token ranges as an example to start a workload estimate, not as measured industry norms.",
     detail:
-      "Use the table as a planning reference for what usually makes up the prompt-side context in a retrieval-backed Q&A flow. It is meant to help interpret the workload calculator, not prescribe an exact prompt template.",
+      "Prompt size is application-specific. Retrieved chunk count, tokenizer, prompt template, history retention, output policy, and hidden reasoning can move the total widely. Replace this example with a sample from your own traffic.",
     formula: "Prompt context ~= system prompt + retrieved context + retained user history + current turn",
     assumptions: [
-      "The split is a realistic planning range for many QA / RAG workloads.",
+      "The split is illustrative and not a universal range.",
       "Retrieved chunk count, chunk size, and memory policy can move the total quickly."
     ],
     pitfalls: [
@@ -422,7 +526,7 @@ const sidebarTopics = {
       "Forgetting that chat history counts only if it is still retained in the active prompt."
     ],
     statA: "4k-8k",
-    statALabel: "Typical total context",
+    statALabel: "Illustrative total",
     statB: "Reference",
     statBLabel: "Planning aid",
     referenceTable: [
@@ -442,9 +546,9 @@ const sidebarTopics = {
         notes: "The last 5-10 turns of conversation, depending on memory strategy."
       },
       {
-        component: "Total Average",
+        component: "Example total",
         tokenUsage: "~4,000 - 8,000",
-        notes: "A realistic planning range for many QA / RAG workloads."
+        notes: "Illustrative only; measure your own prompt and completion distribution."
       }
     ]
   }
@@ -456,6 +560,8 @@ const state = {
   mode: "sandbox",
   selectedSectionId: "constraints",
   selectedTopicId: "mental-model",
+  lastSidebarTriggerTopicId: "mental-model",
+  advancedControlsOpen: false,
   sidebarOpen: false,
   sidebarWidth: 360,
   modelPresetId: "velvet-14b",
@@ -473,10 +579,6 @@ const state = {
 
 const topicEnhancements = {
   "weight-vram": {
-    guideReferences: [
-      "Inference guide Step 2: Sizing static VRAM",
-      "Inference guide Worked example: Velvet 14B on A100 80GB"
-    ],
     liveStats(results) {
       return [
         { label: "Total params", value: `${formatNumber(state.model.totalParamsB, 1)}B` },
@@ -490,7 +592,7 @@ const topicEnhancements = {
         {
           label: "Start with stored parameters",
           value: `${formatNumber(state.model.totalParamsB, 1)}B total parameters`,
-          note: `${getArchitectureLabel(state.model.architecture)} storage still uses the full model, so this step follows total parameters rather than active parameters.`
+          note: `${getArchitectureLabel(state.model)} stores the full model, so this step follows total parameters rather than active parameters.`
         },
         {
           label: "Apply the chosen precision",
@@ -506,11 +608,6 @@ const topicEnhancements = {
     }
   },
   "kv-cache": {
-    guideReferences: [
-      "Inference guide Step 3: Sizing dynamic VRAM (KV cache)",
-      "Inference guide Workload reference: typical QA / RAG context",
-      "Inference guide Estimating concurrent users"
-    ],
     liveStats(results) {
       return [
         { label: "Prompt", value: formatTokens(state.workload.promptTokens) },
@@ -523,29 +620,25 @@ const topicEnhancements = {
       return [
         {
           label: "Build the full sequence length",
-          value: `${formatTokens(state.workload.promptTokens)} prompt + ${formatTokens(state.workload.outputTokens)} output = ${formatTokens(results.totalSequenceTokens)} total tokens`,
-          note: "The guide treats both prompt and generated output as part of the active sequence, so both contribute to KV growth."
+          value: `${formatTokens(state.workload.promptTokens)} prompt + ${formatTokens(state.workload.outputTokens)} visible output + ${formatTokens(results.hiddenReasoningTokens)} hidden = ${formatTokens(results.totalSequenceTokens)} live tokens`,
+          note: "Prompt, visible output, and configured hidden reasoning tokens all count toward live KV."
         },
         {
           label: "Compute KV bytes per token",
-          value: `${formatCompact(results.kvPerTokenBytes, 1)} bytes/token`,
-          note: `The app uses 2 × layers × KV heads × head dim × KV bytes × MLA factor. It deliberately uses ${formatNumber(state.model.kvHeads, 0)} KV heads, not ${formatNumber(state.model.attentionHeads, 0)} attention heads, following the guide's GQA warning.`
+          value: `${formatCompact(results.kvBytesPerTokenPerLayer, 1)} bytes per layer-token`,
+          note: state.model.attentionType === "mla"
+            ? `MLA stores (${formatNumber(state.model.mlaKvRank, 0)} latent + ${formatNumber(state.model.mlaRopeDim, 0)} positional) values × ${formatNumber(state.model.kvBytes, 2)} bytes${state.model.indexerHeadDim > 0 ? `, plus ${formatNumber(state.model.indexerHeadDim, 0)} indexer values × ${formatNumber(state.model.indexerCacheBytes, 2)} bytes` : ""}.`
+            : `GQA stores 2 × ${formatNumber(state.model.kvHeads, 0)} KV heads × ${formatNumber(state.model.headDim, 0)} dimensions × ${formatNumber(state.model.kvBytes, 2)} bytes.`
         },
         {
           label: "Scale by sequence length",
-          value: `${formatCompact(results.kvPerTokenBytes, 1)} × ${formatTokens(results.totalSequenceTokens)} = ${formatGB(results.kvPerUserGB)}`,
-          note: "That gives the KV cache footprint for one active user at the current sequence length."
+          value: `${formatGB(results.kvPerUserGB)} for one active request`,
+          note: `${formatNumber(state.model.layers - results.slidingWindowLayers, 0)} full-context layers and ${formatNumber(results.slidingWindowLayers, 0)} sliding-window layers at a ${formatTokens(results.slidingWindowTokens)} window.`
         }
       ];
     }
   },
   overhead: {
-    guideReferences: [
-      "Inference guide Step 2: Sizing static VRAM",
-      "Inference guide Step 3: Sizing dynamic VRAM (KV cache)",
-      "Inference guide Step 4: Adding a planning buffer",
-      "Inference guide Worked example: Velvet 14B on A100 80GB"
-    ],
     liveStats(results) {
       return [
         { label: "Total KV", value: formatGB(results.totalKvGB) },
@@ -570,88 +663,68 @@ const topicEnhancements = {
         {
           label: "Apply the planning multiplier",
           value: `${formatGB(rawWorkingSet)} × ${formatNumber(state.workload.overheadMultiplier, 2)} = ${formatGB(results.requiredVramGB)}`,
-          note: `The guide's reality-tax step is why the app compares ${formatGB(results.requiredVramGB)} against ${formatGB(results.totalSystemVramGB)} total system VRAM instead of using the raw working set alone.`
+          note: `The selected margin is why the app compares ${formatGB(results.requiredVramGB)} against ${formatGB(results.totalSystemVramGB)} total system VRAM instead of using the raw working set alone.`
         }
       ];
     }
   },
   decode: {
-    guideReferences: [
-      "Inference guide Step 1: Defining the hardware envelope",
-      "Inference guide Step 5: Estimating decode throughput",
-      "Inference guide Interpreting throughput for concurrent users"
-    ],
     liveStats(results) {
       return [
         { label: "Active params", value: `${formatNumber(results.activeParamsB, 1)}B` },
         { label: "Peak bandwidth", value: `${formatNumber(results.aggregatePeakBandwidthTBps, 2)} TB/s` },
         { label: "Usable bandwidth", value: `${formatNumber(results.effectiveDecodeBandwidthTBps, 2)} TB/s` },
-        { label: "Service TPS", value: `${formatNumber(results.serviceThroughputTps, 0)} tok/s` },
-        { label: "Per user", value: `${formatNumber(results.tpsPerUser, 1)} tok/s` }
+        { label: "Single-stream roofline", value: `${formatNumber(results.decodeTps, 1)} tok/s` },
+        { label: "Packed-batch bound", value: `${formatNumber(results.batchDecodeThroughputLowTps, 1)}–${formatNumber(results.batchDecodeThroughputHighTps, 1)} tok/s` }
       ];
     },
     walkthrough(results) {
-      const batchingGain = results.decodeTps > 0 ? results.serviceThroughputTps / results.decodeTps : 0;
       return [
         {
-          label: "Estimate the weight bytes touched for one generated token",
-          value: `${formatNumber(results.activeParamsB, 1)}B active params × ${formatNumber(state.model.weightBytes, 1)} bytes = ${formatGB(results.activeWeightReadGBPerToken)}`,
-          note: "Dense models use total parameters here. MoE and MLA use active parameters, which is why sparse models can store large weights but decode faster."
+          label: "Estimate active weight traffic and FLOPs per token",
+          value: `${formatNumber(results.activeParamsB, 1)}B active params × ${formatNumber(state.model.weightBytes, 2)} bytes/weight = ${formatGB(results.activeWeightReadGBPerToken)}; about ${formatCompact(results.activeParamsB * 2, 1)}B FLOPs/token`,
+          note: "Dense uses total parameters. MoE uses its configured active count; MLA does not change parameter activation."
         },
         {
-          label: "Convert peak bandwidth into usable bandwidth",
+          label: "Convert peak bandwidth and compute to usable ceilings",
           value:
             results.gpuCount > 1
               ? `${formatNumber(results.aggregatePeakBandwidthTBps, 2)} TB/s × ${formatPercent(results.decodeEfficiency)} decode efficiency × ${formatPercent(results.multiGpuEfficiency)} scaling = ${formatNumber(results.effectiveDecodeBandwidthTBps, 2)} TB/s`
               : `${formatNumber(results.aggregatePeakBandwidthTBps, 2)} TB/s × ${formatPercent(results.decodeEfficiency)} decode efficiency = ${formatNumber(results.effectiveDecodeBandwidthTBps, 2)} TB/s`,
-          note: "This is the key correction for real serving. The app no longer treats peak bandwidth as the same thing as usable throughput."
+          note: "Efficiency fields are planning assumptions. Use measured kernel and serving throughput when available."
         },
         {
-          label: "Convert usable bandwidth into single-stream decode speed",
-          value: `${formatDuration(results.decodeTimePerTokenSec)} per token = ${formatNumber(results.decodeTps, 0)} tok/s`,
-          note: "This remains a bandwidth-dominant first-order estimate rather than a production benchmark."
+          label: "Take the lower single-stream roofline",
+          value: `min(${formatNumber(results.decodeBandwidthBoundTps, 1)} HBM-bound, ${formatNumber(results.decodeComputeBoundTps, 1)} compute-bound) = ${formatNumber(results.decodeTps, 1)} tok/s`,
+          note: "This is a first-order ceiling. It excludes KV reads, attention work, queueing, and software overhead."
         },
         {
-          label: "Apply the app's concurrency batching heuristic",
-          value: `${formatNumber(results.decodeTps, 0)} × ${formatNumber(batchingGain, 2)} = ${formatNumber(results.serviceThroughputTps, 0)} tok/s`,
-          note: "The guide gives the baseline decode math. The app then adds a batching-gain heuristic so the service-throughput card reflects shared decode under active concurrency."
-        },
-        {
-          label: "Split the total service rate across users",
-          value: `${formatNumber(results.serviceThroughputTps, 0)} ÷ ${formatNumber(state.workload.concurrentUsers, 0)} = ${formatNumber(results.tpsPerUser, 1)} tok/s per user`,
-          note: "That per-user number is what the app later uses for the typical-experience heuristic."
+          label: "Bound a fully packed decode step",
+          value: `${formatNumber(state.workload.concurrentUsers, 0)} concurrent sequences: ${formatNumber(results.batchDecodeThroughputLowTps, 1)}–${formatNumber(results.batchDecodeThroughputHighTps, 1)} aggregate tok/s`,
+          note: state.model.parameterization === "moe"
+            ? "The range runs from low expert reuse to all requests sharing the same active weights. Actual routes and scheduler occupancy determine the result."
+            : "Assumes every selected request decodes in the same step and reuses the model weights. This is an ideal packed-batch bound, not a service prediction."
         }
       ];
     }
   },
   ttft: {
-    guideReferences: [
-      "Inference guide Step 1: Defining the hardware envelope",
-      "Inference guide Step 6: Estimating TTFT",
-      "Inference guide Hidden reasoning delay"
-    ],
     liveStats(results) {
       const stats = [
         { label: "Prompt", value: formatTokens(state.workload.promptTokens) },
         { label: "Peak compute", value: `${formatNumber(results.aggregatePeakComputeTFLOPS, 0)} TFLOPS` },
         { label: "Usable compute", value: `${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS` },
-        { label: "TTFT floor", value: formatDuration(results.ttftFloorSec) },
-        { label: "TTFT under load", value: formatDuration(results.ttftUnderLoadSec) }
+        { label: "Prefill compute floor", value: formatDuration(results.ttftFloorSec) },
+        { label: "With hidden-token floor", value: formatDuration(results.answerStartFloorSec) }
       ];
-
-      if (state.workload.hiddenReasoningTokens > 0) {
-        stats.push({ label: "Answer start", value: formatDuration(results.answerStartSec) });
-      }
-
       return stats;
     },
     walkthrough(results) {
-      const loadPenalty = results.ttftFloorSec > 0 ? results.ttftUnderLoadSec / results.ttftFloorSec : 0;
       return [
         {
           label: "Choose the prefill-sized model footprint",
           value: `${formatNumber(results.prefillParamsB, 1)}B effective prefill params`,
-          note: "Dense models use total parameters for prefill. MoE and MLA use active parameters for the lower-bound intuition described in the guide."
+          note: "Dense uses total parameters; MoE uses the configured active parameter count. MLA alone does not reduce parameter work."
         },
         {
           label: "Convert peak compute into usable prefill compute",
@@ -659,31 +732,22 @@ const topicEnhancements = {
             results.gpuCount > 1
               ? `${formatNumber(results.aggregatePeakComputeTFLOPS, 0)} TFLOPS × ${formatPercent(results.prefillEfficiency)} prefill efficiency × ${formatPercent(results.multiGpuEfficiency)} scaling = ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS`
               : `${formatNumber(results.aggregatePeakComputeTFLOPS, 0)} TFLOPS × ${formatPercent(results.prefillEfficiency)} prefill efficiency = ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS`,
-          note: "This is where the app now discounts spec-sheet compute before using it for TTFT."
+          note: "The value is discounted by the selected prefill-compute efficiency and multi-GPU scaling assumptions."
         },
         {
-          label: "Compute the theoretical TTFT floor",
-          value: `${formatNumber(results.prefillParamsB, 1)}B × ${formatTokens(state.workload.promptTokens)} prompt tokens × 2 ÷ ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS = ${formatDuration(results.ttftFloorSec)}`,
-          note: "This follows the guide's lower-bound TTFT framing rather than a production latency promise."
+          label: "Estimate total prompt work",
+          value: `${formatCompact(results.linearPrefillFLOPs, 2)} linear FLOPs + ${formatCompact(results.attentionPrefillFLOPs, 2)} attention FLOPs`,
+          note: "The attention term uses configured layer/head dimensions; DSA adds a full-context indexer estimate. Projection, kernel, and memory effects are not included."
         },
         {
-          label: "Apply the app's load penalty",
-          value: `${formatDuration(results.ttftFloorSec)} × ${formatNumber(loadPenalty, 2)} = ${formatDuration(results.ttftUnderLoadSec)}`,
-          note: "The app scales the floor upward when per-user throughput drops under load, so this card is more practical than the theoretical floor alone."
-        },
-        {
-          label: "Optionally add hidden reasoning delay",
-          value: state.workload.hiddenReasoningTokens > 0 ? `${formatTokens(state.workload.hiddenReasoningTokens)} hidden tokens push answer start to ${formatDuration(results.answerStartSec)}` : "No hidden reasoning tokens are added in the current scenario",
-          note: "This matches the guide's warning that reasoning models can feel slower even when the visible TTFT math looks acceptable."
+          label: "Divide by usable compute and optionally add hidden tokens",
+          value: `${formatDuration(results.ttftFloorSec)} prompt floor; ${formatTokens(state.workload.hiddenReasoningTokens)} hidden tokens give ${formatDuration(results.answerStartFloorSec)} lower bound`,
+          note: "The hidden-token delay assumes single-stream decoding. Neither value estimates queueing or actual user-visible TTFT."
         }
       ];
     }
   },
   "workload-reference": {
-    guideReferences: [
-      "Inference guide Workload reference: typical QA / RAG context",
-      "Inference guide Estimating concurrent users"
-    ],
     liveStats(results) {
       return [
         { label: "Prompt", value: formatTokens(state.workload.promptTokens) },
@@ -696,28 +760,23 @@ const topicEnhancements = {
       return [
         {
           label: "Use the guide's QA / RAG planning range",
-          value: "Typical total context: 4k-8k tokens",
-          note: "The table is there to help you decide whether your prompt-side assumptions look light, standard, or aggressive."
+          value: "Illustrative total: 4k-8k tokens",
+          note: "Use the table as a rough planning example only; your tokenized prompts and traffic samples are the source of truth."
         },
         {
           label: "Compare your live prompt mix",
-          value: `${formatTokens(state.workload.promptTokens)} prompt + ${formatTokens(state.workload.outputTokens)} output = ${formatTokens(results.totalSequenceTokens)} total sequence`,
-          note: "If this total grows well past the guide's common range, KV pressure and practical concurrency fall quickly."
+          value: `${formatTokens(state.workload.promptTokens)} prompt + ${formatTokens(state.workload.outputTokens)} visible output + ${formatTokens(results.hiddenReasoningTokens)} hidden = ${formatTokens(results.totalSequenceTokens)} live tokens`,
+          note: "Longer live sequences use more KV memory and reduce memory-bound concurrency."
         },
         {
           label: "Use it as an input sanity check",
           value: `${formatNumber(state.workload.concurrentUsers, 0)} concurrent users at ${formatTokens(results.totalSequenceTokens)} total tokens each`,
-          note: "The guide's workload table is not a template. It is a planning reference for deciding whether your workload assumptions are plausible."
+          note: "The workload table is illustrative, not a template. Use your own tokenized traffic to set these inputs."
         }
       ];
     }
   },
   "hardware-envelope": {
-    guideReferences: [
-      "Inference guide Step 1: Defining the hardware envelope",
-      "Inference guide Choosing peak specs without double-counting",
-      "Inference guide Choosing initial efficiency assumptions"
-    ],
     liveStats(results) {
       return [
         { label: "GPU count", value: formatNumber(results.gpuCount, 0) },
@@ -761,113 +820,149 @@ function clamp(value, minValue, maxValue) {
   return Math.min(Math.max(value, minValue), maxValue);
 }
 
-function getArchitectureLabel(architecture) {
-  return architecture === "dense" ? "Dense" : architecture === "moe" ? "MoE" : "MLA";
+function getArchitectureLabel(model) {
+  const parameterization = model.parameterization === "moe" ? "MoE" : "Dense";
+  const attention = model.attentionType === "mla" ? "MLA" : "GQA";
+  const sparseAttention = Number(model.sparseAttentionTopK) > 0 ? " + DSA" : "";
+  return `${parameterization} + ${attention}${sparseAttention}`;
 }
 
 function getActiveParams(model) {
-  return model.architecture === "dense" ? model.totalParamsB : model.activeParamsB;
+  return model.parameterization === "moe" ? model.activeParamsB : model.totalParamsB;
 }
 
 function getPrefillParams(model) {
-  return model.architecture === "dense" ? model.totalParamsB : model.activeParamsB;
+  return getActiveParams(model);
 }
 
-function getKvReduction(model) {
-  return model.architecture === "mla" ? model.mlaReduction : 1;
+function getKvBytesPerTokenPerLayer(model) {
+  const attentionCacheValues = model.attentionType === "mla"
+    ? (Number(model.mlaKvRank) + Number(model.mlaRopeDim)) * Number(model.kvBytes)
+    : 2 * Number(model.kvHeads) * Number(model.headDim) * Number(model.kvBytes);
+  const indexerCacheValues = Number(model.sparseAttentionTopK) > 0 && Number(model.indexerHeadDim) > 0
+    ? Number(model.indexerHeadDim) * Number(model.indexerCacheBytes)
+    : 0;
+  return attentionCacheValues + indexerCacheValues;
 }
 
 function getEfficiencyRatio(percent, fallback = 100) {
-  return clamp((Number(percent) || fallback) / 100, 0.1, 1);
+  const value = Number(percent);
+  return clamp((Number.isFinite(value) && value > 0 ? value : fallback) / 100, 0.1, 1);
+}
+
+function countCausalAttentionPairs(tokenCount, windowTokens = tokenCount) {
+  const tokens = Math.max(0, Math.floor(tokenCount));
+  const window = Math.max(1, Math.floor(windowTokens));
+  if (tokens <= window) {
+    return (tokens * (tokens + 1)) / 2;
+  }
+  return (window * (window + 1)) / 2 + (tokens - window) * window;
 }
 
 function calculateSizing(model, hardware, workload) {
-  const gpuCount = Math.max(1, Math.floor(hardware.gpuCount || 1));
-  const totalSystemVramGB = hardware.vramGB * gpuCount;
-  const aggregatePeakBandwidthTBps = hardware.bandwidthTBps * gpuCount;
-  const aggregatePeakComputeTFLOPS = hardware.computeTFLOPS * gpuCount;
+  const gpuCount = Math.max(1, Math.floor(Number(hardware.gpuCount) || 1));
+  const gpuVramGB = Math.max(0, Number(hardware.vramGB) || 0);
+  const peakBandwidthTBps = Math.max(0, Number(hardware.bandwidthTBps) || 0);
+  const peakComputeTFLOPS = Math.max(0, Number(hardware.computeTFLOPS) || 0);
+  const totalSystemVramGB = gpuVramGB * gpuCount;
+  const aggregatePeakBandwidthTBps = peakBandwidthTBps * gpuCount;
+  const aggregatePeakComputeTFLOPS = peakComputeTFLOPS * gpuCount;
   const decodeEfficiency = getEfficiencyRatio(hardware.decodeEfficiencyPct);
+  const decodeComputeEfficiency = getEfficiencyRatio(hardware.decodeComputeEfficiencyPct, 35);
   const prefillEfficiency = getEfficiencyRatio(hardware.prefillEfficiencyPct);
   const multiGpuEfficiency = gpuCount > 1 ? getEfficiencyRatio(hardware.multiGpuEfficiencyPct) : 1;
   const effectiveDecodeBandwidthTBps = aggregatePeakBandwidthTBps * decodeEfficiency * multiGpuEfficiency;
+  const effectiveDecodeComputeTFLOPS = aggregatePeakComputeTFLOPS * decodeComputeEfficiency * multiGpuEfficiency;
   const effectivePrefillComputeTFLOPS = aggregatePeakComputeTFLOPS * prefillEfficiency * multiGpuEfficiency;
-  const activeParamsB = getActiveParams(model);
-  const prefillParamsB = getPrefillParams(model);
-  const totalSequenceTokens = Math.max(1, workload.promptTokens + workload.outputTokens);
-  const kvPerTokenBytes =
-    2 *
-    model.layers *
-    model.kvHeads *
-    model.headDim *
-    model.kvBytes *
-    getKvReduction(model);
-  const kvPerUserGB = (kvPerTokenBytes * totalSequenceTokens) / 1e9;
-  const weightMemoryGB = model.totalParamsB * model.weightBytes;
-  const activeWeightReadGBPerToken = activeParamsB * model.weightBytes;
-  const totalKvGB = kvPerUserGB * workload.concurrentUsers;
-  const usableBudgetGB = totalSystemVramGB / workload.overheadMultiplier;
+  const totalParamsB = Math.max(0, Number(model.totalParamsB) || 0);
+  const activeParamsB = Math.min(totalParamsB, Math.max(0, Number(getActiveParams(model)) || 0));
+  const prefillParamsB = getPrefillParams({ ...model, totalParamsB, activeParamsB });
+  const layers = Math.max(0, Math.floor(Number(model.layers) || 0));
+  const attentionHeads = Math.max(0, Math.floor(Number(model.attentionHeads) || 0));
+  const slidingWindowLayers = clamp(Math.floor(Number(model.slidingWindowLayers) || 0), 0, layers);
+  const slidingWindowTokens = Math.max(1, Math.floor(Number(model.slidingWindowTokens) || 1));
+  const promptTokens = Math.max(1, Math.floor(Number(workload.promptTokens) || 1));
+  const outputTokens = Math.max(0, Math.floor(Number(workload.outputTokens) || 0));
+  const concurrentUsers = Math.max(1, Math.floor(Number(workload.concurrentUsers) || 1));
+  const hiddenReasoningTokens = Math.max(0, Math.floor(Number(workload.hiddenReasoningTokens) || 0));
+  const overheadMultiplier = Math.max(1, Number(workload.overheadMultiplier) || 1);
+  const weightBytes = Math.max(0, Number(model.weightBytes) || 0);
+  const kvBytes = Math.max(0, Number(model.kvBytes) || 0);
+  const totalSequenceTokens = promptTokens + outputTokens + hiddenReasoningTokens;
+  const maxContextTokens = Math.max(0, Math.floor(Number(model.maxContextTokens) || 0));
+  const contextLimitExceeded = maxContextTokens > 0 && totalSequenceTokens > maxContextTokens;
+  const sparseAttentionTopK = Math.max(0, Math.floor(Number(model.sparseAttentionTopK) || 0));
+  const indexerHeads = Math.max(0, Math.floor(Number(model.indexerHeads) || 0));
+  const indexerHeadDim = Math.max(0, Math.floor(Number(model.indexerHeadDim) || 0));
+  const kvBytesPerTokenPerLayer = getKvBytesPerTokenPerLayer({ ...model, kvBytes });
+  const fullAttentionLayers = layers - slidingWindowLayers;
+  const kvPerUserBytes =
+    kvBytesPerTokenPerLayer *
+    (fullAttentionLayers * totalSequenceTokens + slidingWindowLayers * Math.min(totalSequenceTokens, slidingWindowTokens));
+  const kvPerUserGB = kvPerUserBytes / 1e9;
+  const weightMemoryGB = totalParamsB * weightBytes;
+  const activeWeightReadBytesPerToken = activeParamsB * 1e9 * weightBytes;
+  const activeWeightReadGBPerToken = activeWeightReadBytesPerToken / 1e9;
+  const totalKvGB = kvPerUserGB * concurrentUsers;
+  const usableBudgetGB = overheadMultiplier > 0 ? totalSystemVramGB / overheadMultiplier : 0;
   const remainingKvBudgetGB = usableBudgetGB - weightMemoryGB;
-  const requiredVramGB = (weightMemoryGB + totalKvGB) * workload.overheadMultiplier;
+  const rawWorkingSetGB = weightMemoryGB + totalKvGB;
+  const requiredVramGB = rawWorkingSetGB * overheadMultiplier;
   const fitsInMemory = requiredVramGB <= totalSystemVramGB;
-  const decodeTimePerTokenSec =
-    effectiveDecodeBandwidthTBps > 0 ? activeWeightReadGBPerToken / effectiveDecodeBandwidthTBps / 1000 : Infinity;
-  const decodeTps = decodeTimePerTokenSec > 0 ? 1 / decodeTimePerTokenSec : 0;
-  const ttftFloorSec =
-    effectivePrefillComputeTFLOPS > 0
-      ? (prefillParamsB * 1e9 * workload.promptTokens * 2) / (effectivePrefillComputeTFLOPS * 1e12)
-      : Infinity;
-  const memoryBoundConcurrency = kvPerUserGB > 0 ? Math.max(0, Math.floor(remainingKvBudgetGB / kvPerUserGB)) : 0;
-  const memoryUtilization = requiredVramGB / totalSystemVramGB;
-
-  const batchingGain = 1 + 3.2 * (1 - Math.exp(-(Math.max(workload.concurrentUsers, 1) - 1) / 12));
-  const serviceThroughputTps = decodeTps * batchingGain;
-  const tpsPerUser = serviceThroughputTps / Math.max(1, workload.concurrentUsers);
-  const ttftUnderLoadSec = ttftFloorSec * clamp(24 / Math.max(tpsPerUser, 6), 1.1, 4.5);
-  const answerStartSec = ttftUnderLoadSec + workload.hiddenReasoningTokens / Math.max(tpsPerUser, 1);
-  let experienceLabel = "Smooth";
-  let experienceTone = "comfortable";
-  let experienceReason = "For normal QA / RAG applications, this per-user speed should feel fluid and comfortably interactive.";
-
-  if (tpsPerUser >= 20) {
-    experienceLabel = "Smooth";
-    experienceTone = "comfortable";
-    experienceReason = "For normal QA / RAG applications, ≥20 tok/s per user is usually smooth and faster than most users can comfortably read.";
-  } else if (tpsPerUser >= 10) {
-    experienceLabel = "Acceptable";
-    experienceTone = "tight";
-    experienceReason = "For normal QA / RAG applications, 10–20 tok/s per user is still clearly usable, but users will notice the system working.";
-  } else if (tpsPerUser >= 5) {
-    experienceLabel = "Poor";
-    experienceTone = "degraded";
-    experienceReason = "For normal QA / RAG applications, 5–10 tok/s per user feels slow enough that lag becomes noticeable.";
-  } else {
-    experienceLabel = "Unusable";
-    experienceTone = "degraded";
-    experienceReason = "For normal QA / RAG applications, below 5 tok/s per user is generally too slow for a good interactive experience.";
-  }
-
-  let acceptableRagConcurrency = 0;
-  for (let userCount = 1; userCount <= memoryBoundConcurrency; userCount += 1) {
-    const userBatchingGain = 1 + 3.2 * (1 - Math.exp(-(userCount - 1) / 12));
-    const userServiceThroughput = decodeTps * userBatchingGain;
-    const userTps = userServiceThroughput / userCount;
-    if (userTps >= 10) {
-      acceptableRagConcurrency = userCount;
-    }
-  }
-
-  let zone = "comfortable";
-  let zoneReason = experienceReason;
-
-  if (!fitsInMemory || remainingKvBudgetGB < 0) {
-    zone = "overflow";
-    zoneReason = "The model plus cache do not fit inside the selected VRAM envelope.";
-  } else if (memoryUtilization > 0.9 || experienceTone === "degraded") {
-    zone = "degraded";
-  } else if (memoryUtilization > 0.75 || experienceTone === "tight") {
-    zone = "tight";
-    zoneReason = "The deployment still fits, but the selected concurrency is near the upper human-comfort range for typical RAG Q&A.";
-  }
+  const effectiveDecodeBandwidthBps = effectiveDecodeBandwidthTBps * 1e12;
+  const effectiveDecodeComputeFLOPS = effectiveDecodeComputeTFLOPS * 1e12;
+  const effectivePrefillComputeFLOPS = effectivePrefillComputeTFLOPS * 1e12;
+  const activeModelFLOPsPerToken = activeParamsB * 1e9 * 2;
+  const decodeBandwidthBoundTps = activeWeightReadBytesPerToken > 0
+    ? effectiveDecodeBandwidthBps / activeWeightReadBytesPerToken
+    : Infinity;
+  const decodeComputeBoundTps = activeModelFLOPsPerToken > 0
+    ? effectiveDecodeComputeFLOPS / activeModelFLOPsPerToken
+    : Infinity;
+  const decodeTps = Math.max(0, Math.min(decodeBandwidthBoundTps, decodeComputeBoundTps));
+  const decodeTimePerTokenSec = decodeTps > 0 ? 1 / decodeTps : Infinity;
+  const bestCaseBatchWeightBytes = model.parameterization === "moe"
+    ? activeWeightReadBytesPerToken
+    : weightMemoryGB * 1e9;
+  const worstCaseBatchWeightBytes = model.parameterization === "moe"
+    ? Math.min(totalParamsB, activeParamsB * concurrentUsers) * 1e9 * weightBytes
+    : bestCaseBatchWeightBytes;
+  const batchBandwidthBoundLowTps = worstCaseBatchWeightBytes > 0
+    ? (concurrentUsers * effectiveDecodeBandwidthBps) / worstCaseBatchWeightBytes
+    : Infinity;
+  const batchBandwidthBoundHighTps = bestCaseBatchWeightBytes > 0
+    ? (concurrentUsers * effectiveDecodeBandwidthBps) / bestCaseBatchWeightBytes
+    : Infinity;
+  const batchDecodeThroughputLowTps = Math.max(0, Math.min(batchBandwidthBoundLowTps, decodeComputeBoundTps));
+  const batchDecodeThroughputHighTps = Math.max(0, Math.min(batchBandwidthBoundHighTps, decodeComputeBoundTps));
+  const queryKeyHeadDim = model.attentionType === "mla"
+    ? (Number(model.mlaQkNopeDim) || 0) + (Number(model.mlaRopeDim) || 0)
+    : (Number(model.headDim) || 0);
+  const valueHeadDim = model.attentionType === "mla"
+    ? (Number(model.mlaValueHeadDim) || 0)
+    : (Number(model.headDim) || 0);
+  const fullAttentionWindow = sparseAttentionTopK > 0 ? Math.min(promptTokens, sparseAttentionTopK) : promptTokens;
+  const slidingAttentionWindow = sparseAttentionTopK > 0
+    ? Math.min(slidingWindowTokens, sparseAttentionTopK)
+    : slidingWindowTokens;
+  const fullAttentionPairs = countCausalAttentionPairs(promptTokens, fullAttentionWindow);
+  const slidingAttentionPairs = countCausalAttentionPairs(promptTokens, slidingAttentionWindow);
+  const indexerAttentionPairs = countCausalAttentionPairs(promptTokens, promptTokens);
+  const attentionFlopsPerPair = 2 * attentionHeads * (queryKeyHeadDim + valueHeadDim);
+  const linearPrefillFLOPs = prefillParamsB * 1e9 * promptTokens * 2;
+  const sparseAttentionPrefillFLOPs = attentionFlopsPerPair *
+    (fullAttentionLayers * fullAttentionPairs + slidingWindowLayers * slidingAttentionPairs);
+  const indexerPrefillFLOPs = sparseAttentionTopK > 0
+    ? 2 * indexerHeads * indexerHeadDim * layers * indexerAttentionPairs
+    : 0;
+  const attentionPrefillFLOPs = sparseAttentionPrefillFLOPs + indexerPrefillFLOPs;
+  const totalPrefillFLOPs = linearPrefillFLOPs + attentionPrefillFLOPs;
+  const ttftFloorSec = effectivePrefillComputeFLOPS > 0 ? totalPrefillFLOPs / effectivePrefillComputeFLOPS : Infinity;
+  const answerStartFloorSec = ttftFloorSec + (decodeTps > 0 ? hiddenReasoningTokens / decodeTps : 0);
+  const memoryBoundConcurrency = kvPerUserGB > 0
+    ? Math.max(0, Math.floor(remainingKvBudgetGB / kvPerUserGB))
+    : 0;
+  const memoryUtilization = totalSystemVramGB > 0 ? requiredVramGB / totalSystemVramGB : Infinity;
 
   return {
     gpuCount,
@@ -875,47 +970,68 @@ function calculateSizing(model, hardware, workload) {
     aggregatePeakBandwidthTBps,
     aggregatePeakComputeTFLOPS,
     effectiveDecodeBandwidthTBps,
+    effectiveDecodeComputeTFLOPS,
     effectivePrefillComputeTFLOPS,
     decodeEfficiency,
+    decodeComputeEfficiency,
     prefillEfficiency,
     multiGpuEfficiency,
     activeParamsB,
     prefillParamsB,
     totalSequenceTokens,
-    kvPerTokenBytes,
+    hiddenReasoningTokens,
+    maxContextTokens,
+    contextLimitExceeded,
+    sparseAttentionTopK,
+    indexerHeadDim,
+    kvBytesPerTokenPerLayer,
+    kvPerUserBytes,
     kvPerUserGB,
     totalKvGB,
     weightMemoryGB,
+    activeWeightReadBytesPerToken,
     activeWeightReadGBPerToken,
+    bestCaseBatchWeightBytes,
+    worstCaseBatchWeightBytes,
     usableBudgetGB,
     remainingKvBudgetGB,
     requiredVramGB,
     fitsInMemory,
+    decodeBandwidthBoundTps,
+    decodeComputeBoundTps,
     decodeTimePerTokenSec,
     decodeTps,
-    serviceThroughputTps,
-    tpsPerUser,
+    batchDecodeThroughputLowTps,
+    batchDecodeThroughputHighTps,
+    linearPrefillFLOPs,
+    indexerPrefillFLOPs,
+    attentionPrefillFLOPs,
+    totalPrefillFLOPs,
     ttftFloorSec,
-    ttftUnderLoadSec,
-    answerStartSec,
+    answerStartFloorSec,
     memoryBoundConcurrency,
-    acceptableRagConcurrency,
     memoryUtilization,
-    experienceLabel,
-    experienceTone,
-    experienceReason,
-    zone,
-    zoneReason
+    rawWorkingSetGB,
+    slidingWindowLayers,
+    slidingWindowTokens
   };
 }
 
 function calculateScenario(totalSequenceTokens) {
+  const mix = getSequenceMix(totalSequenceTokens);
   return calculateSizing(state.model, state.hardware, {
     ...state.workload,
-    promptTokens: totalSequenceTokens,
-    outputTokens: 0,
+    ...mix,
     concurrentUsers: Math.max(1, state.workload.concurrentUsers)
   });
+}
+
+function getSequenceMix(totalSequenceTokens) {
+  const total = Math.max(1, Math.floor(totalSequenceTokens));
+  const currentTotal = Math.max(1, state.workload.promptTokens + state.workload.outputTokens);
+  const promptShare = state.workload.promptTokens / currentTotal;
+  const promptTokens = clamp(Math.round(total * promptShare), 1, total);
+  return { promptTokens, outputTokens: total - promptTokens };
 }
 
 function formatNumber(value, digits = 1) {
@@ -976,7 +1092,7 @@ function loadModelPreset(presetId) {
   }
   state.modelPresetId = presetId;
   state.model = structuredClone(preset);
-  state.selectedTopicId = preset.architecture === "dense" ? "weight-vram" : "architecture";
+  state.selectedTopicId = preset.parameterization === "dense" ? "weight-vram" : "architecture";
 }
 
 function loadHardwarePreset(presetId) {
@@ -1007,32 +1123,50 @@ function loadWorkedExample() {
 }
 
 function updateModelField(field, rawValue) {
-  const numericFields = [
-    "totalParamsB",
-    "activeParamsB",
-    "layers",
-    "attentionHeads",
-    "kvHeads",
-    "headDim",
-    "weightBytes",
-    "kvBytes",
-    "mlaReduction"
-  ];
-  state.model[field] = numericFields.includes(field) ? Number(rawValue) : rawValue;
-  if (field === "architecture" && rawValue === "dense") {
+  const integerFields = ["layers", "attentionHeads", "kvHeads", "headDim", "mlaKvRank", "mlaRopeDim", "mlaQkNopeDim", "mlaValueHeadDim", "sparseAttentionTopK", "indexerHeads", "indexerHeadDim", "maxContextTokens", "slidingWindowLayers", "slidingWindowTokens"];
+  const numericFields = ["totalParamsB", "activeParamsB", ...integerFields, "weightBytes", "kvBytes", "indexerCacheBytes"];
+  if (!numericFields.includes(field)) {
+    state.model[field] = rawValue;
+  } else {
+    let value = Number(rawValue);
+    if (!Number.isFinite(value)) value = state.model[field];
+    if (integerFields.includes(field)) value = Math.floor(value);
+    const minimum = ["slidingWindowLayers", "sparseAttentionTopK", "indexerHeads", "indexerHeadDim", "indexerCacheBytes", "maxContextTokens"].includes(field)
+      ? 0
+      : ["totalParamsB", "activeParamsB", "weightBytes", "kvBytes"].includes(field)
+        ? 0.01
+        : 1;
+    state.model[field] = Math.max(minimum, value);
+  }
+  if (field === "parameterization" && rawValue === "dense") {
     state.model.activeParamsB = state.model.totalParamsB;
   }
-  if (field === "totalParamsB" && state.model.architecture === "dense") {
-    state.model.activeParamsB = Number(rawValue);
+  if (field === "totalParamsB") {
+    state.model.activeParamsB = state.model.parameterization === "dense"
+      ? state.model.totalParamsB
+      : Math.min(state.model.activeParamsB, state.model.totalParamsB);
   }
+  if (field === "layers") state.model.slidingWindowLayers = Math.min(state.model.slidingWindowLayers, state.model.layers);
+  if (field === "activeParamsB") state.model.activeParamsB = Math.min(state.model.activeParamsB, state.model.totalParamsB);
 }
 
 function updateHardwareField(field, rawValue) {
-  state.hardware[field] = Number(rawValue);
+  let value = Number(rawValue);
+  if (!Number.isFinite(value)) value = state.hardware[field];
+  if (field === "gpuCount") value = Math.max(1, Math.floor(value));
+  else if (field.endsWith("EfficiencyPct")) value = clamp(value, 10, 100);
+  else value = Math.max(0.01, value);
+  state.hardware[field] = value;
 }
 
 function updateWorkloadField(field, rawValue) {
-  state.workload[field] = Number(rawValue);
+  let value = Number(rawValue);
+  if (!Number.isFinite(value)) value = state.workload[field];
+  if (field === "concurrentUsers") value = Math.max(1, Math.floor(value));
+  else if (field === "promptTokens") value = Math.max(1, Math.floor(value));
+  else if (field === "outputTokens" || field === "hiddenReasoningTokens") value = Math.max(0, Math.floor(value));
+  else if (field === "overheadMultiplier") value = clamp(value, 1, 2);
+  state.workload[field] = value;
 }
 
 function renderModeSwitch() {
@@ -1042,13 +1176,14 @@ function renderModeSwitch() {
   ];
 
   return `
-    <div class="mode-switch">
+    <div class="mode-switch" role="group" aria-label="Calculator view">
       ${modes
         .map(
           (mode) => `
             <button
               type="button"
               class="${state.mode === mode.id ? "active" : ""}"
+              aria-pressed="${state.mode === mode.id}"
               data-action="set-mode"
               data-mode="${mode.id}"
             >
@@ -1063,7 +1198,7 @@ function renderModeSwitch() {
 
 function renderSectionRail() {
   return `
-    <aside class="section-rail">
+    <nav class="section-rail" aria-label="Guide sections">
       <div>
         <div class="micro-label">Guide map</div>
       </div>
@@ -1073,6 +1208,7 @@ function renderSectionRail() {
             <button
               type="button"
               class="${state.selectedSectionId === section.id ? "active" : ""}"
+              aria-current="${state.selectedSectionId === section.id ? "location" : "false"}"
               data-action="select-section"
               data-section="${section.id}"
               data-topic="${section.topicId}"
@@ -1084,233 +1220,163 @@ function renderSectionRail() {
           `
         )
         .join("")}
-    </aside>
+    </nav>
   `;
 }
 
 function renderHeroStrip(results) {
   const primarySummary =
-    "Adjust the model, hardware peaks, efficiency assumptions, and workload, then use the Info buttons to inspect the math, assumptions, and inference-guide references behind each metric.";
+    "Estimate memory fit, decode rooflines, and a prompt-processing floor. Use your model config and serving benchmarks to replace the planning assumptions.";
 
   return `
     <section class="hero-strip">
       <div class="hero-panel">
-        <div class="micro-label">Calculator-first guide</div>
+        <div class="micro-label">LLM inference capacity planner</div>
         <h2 class="hero-title">Inference Sizing Visualizer</h2>
         <p class="guide-copy">${primarySummary}</p>
+        ${renderModeSwitch()}
         <div class="chip-row">
-          <div class="chip"><strong>${state.model.name}</strong> • ${getArchitectureLabel(state.model.architecture)}</div>
+          <div class="chip"><strong>${escapeHtml(state.model.name)}</strong> • ${getArchitectureLabel(state.model)}</div>
           <div class="chip"><strong>${state.hardware.name} × ${formatNumber(results.gpuCount, 0)}</strong> • ${formatGB(results.totalSystemVramGB)} cluster VRAM</div>
-          <div class="chip"><strong>${formatTokens(results.totalSequenceTokens)}</strong> total sequence</div>
-          <div class="chip"><strong>${results.fitsInMemory ? results.experienceLabel : "Does not fit"}</strong> • ${formatNumber(results.tpsPerUser, 1)} tok/s per user</div>
+          <div class="chip"><strong>${formatTokens(results.totalSequenceTokens)}</strong> live sequence tokens</div>
+          <div class="chip"><strong>${results.fitsInMemory ? "Fits with selected margin" : "Exceeds memory budget"}</strong> • ${formatGB(results.requiredVramGB)} planned demand</div>
         </div>
       </div>
     </section>
   `;
 }
 
-function renderSidebarToggle() {
-  const topic = sidebarTopics[state.selectedTopicId] || sidebarTopics["mental-model"];
+function renderContextLimitNote(results) {
+  if (!results.contextLimitExceeded) return "";
   return `
-    <button
-      type="button"
-      class="sidebar-toggle ${state.sidebarOpen ? "hidden" : ""}"
-      data-action="open-sidebar"
-      aria-label="Open explanation sidebar"
-    >
-      <span class="sidebar-toggle-label">Deep dive</span>
-      <strong>${topic.title}</strong>
-    </button>
+    <div class="context-limit-note" role="alert">
+      <strong>Configured model context exceeded.</strong>
+      The live sequence is ${formatTokens(results.totalSequenceTokens)} tokens, above the configured ${formatTokens(results.maxContextTokens)}-token limit. Memory and throughput figures still calculate, but this sequence is not valid for the selected model config.
+    </div>
+  `;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
+
+function renderNumberField(group, field, label, value, options = {}) {
+  const min = options.min ?? 0;
+  const step = options.step ?? 1;
+  const max = options.max === undefined ? "" : `max="${options.max}"`;
+  return `
+    <label class="field">
+      <span>${label}</span>
+      <input data-group="${group}" data-field="${field}" type="number" min="${min}" ${max} step="${step}" value="${escapeHtml(value)}" />
+    </label>
+  `;
+}
+
+function renderSelectField(group, field, label, value, options) {
+  return `
+    <label class="field">
+      <span>${label}</span>
+      <select data-group="${group}" data-field="${field}">
+        ${options.map(([optionValue, optionLabel]) => `<option value="${optionValue}" ${value === optionValue ? "selected" : ""}>${optionLabel}</option>`).join("")}
+      </select>
+    </label>
   `;
 }
 
 function renderControlDeck(results) {
+  const modelPresetOptions = [["custom", "Custom model"], ...modelPresets.map((preset) => [preset.id, preset.name])];
+  const hardwarePresetOptions = [["custom", "Custom hardware"], ...hardwarePresets.map((preset) => [preset.id, preset.name])];
+  const modelFields = [
+    `<label class="field"><span>Model name</span><input data-group="model" data-field="name" value="${escapeHtml(state.model.name)}" /></label>`,
+    renderSelectField("model", "parameterization", "Model type", state.model.parameterization, [["dense", "Dense"], ["moe", "Mixture of experts (MoE)"]]),
+    renderSelectField("model", "attentionType", "Attention / KV layout", state.model.attentionType, [["gqa", "Grouped-query attention (GQA)"], ["mla", "Multi-head latent attention (MLA)"]]),
+    renderNumberField("model", "totalParamsB", "Total parameters (B)", state.model.totalParamsB, { min: 0.1, step: 0.1 }),
+    state.model.parameterization === "moe"
+      ? renderNumberField("model", "activeParamsB", "Active parameters/token (B)", state.model.activeParamsB, { min: 0.1, max: state.model.totalParamsB, step: 0.1 })
+      : `<div class="field-note"><strong>Active parameters</strong><span>Dense: all ${formatNumber(state.model.totalParamsB, 1)}B parameters are active per token.</span></div>`,
+    renderNumberField("model", "layers", "Transformer layers", state.model.layers, { min: 1, step: 1 }),
+    renderNumberField("model", "attentionHeads", "Query heads", state.model.attentionHeads, { min: 1, step: 1 }),
+    state.model.attentionType === "mla"
+      ? [
+          renderNumberField("model", "mlaKvRank", "MLA KV latent rank", state.model.mlaKvRank, { min: 1, step: 1 }),
+          renderNumberField("model", "mlaRopeDim", "MLA RoPE key dim", state.model.mlaRopeDim, { min: 1, step: 1 }),
+          renderNumberField("model", "mlaQkNopeDim", "MLA QK content dim", state.model.mlaQkNopeDim, { min: 1, step: 1 }),
+          renderNumberField("model", "mlaValueHeadDim", "MLA value head dim", state.model.mlaValueHeadDim, { min: 1, step: 1 })
+        ].join("")
+      : [
+          renderNumberField("model", "kvHeads", "KV heads", state.model.kvHeads, { min: 1, step: 1 }),
+          renderNumberField("model", "headDim", "Head dimension", state.model.headDim, { min: 1, step: 1 })
+        ].join(""),
+    renderNumberField("model", "slidingWindowLayers", "Sliding-window layers (0 = none)", state.model.slidingWindowLayers, { min: 0, max: state.model.layers, step: 1 }),
+    renderNumberField("model", "slidingWindowTokens", "Sliding window (tokens)", state.model.slidingWindowTokens, { min: 1, step: 128 }),
+    renderNumberField("model", "maxContextTokens", "Max sequence length (0 = unknown)", state.model.maxContextTokens, { min: 0, step: 128 }),
+    renderNumberField("model", "sparseAttentionTopK", "Sparse attention top-k (0 = dense)", state.model.sparseAttentionTopK, { min: 0, step: 128 }),
+    state.model.sparseAttentionTopK > 0
+      ? [
+          renderNumberField("model", "indexerHeads", "DSA indexer heads", state.model.indexerHeads, { min: 0, step: 1 }),
+          renderNumberField("model", "indexerHeadDim", "DSA indexer key dim", state.model.indexerHeadDim, { min: 0, step: 1 }),
+          renderNumberField("model", "indexerCacheBytes", "Indexer cache bytes/value", state.model.indexerCacheBytes, { min: 0, step: 0.01 })
+        ].join("")
+      : "",
+    renderNumberField("model", "weightBytes", "Weight bytes/parameter", state.model.weightBytes, { min: 0.01, step: 0.01 }),
+    renderNumberField("model", "kvBytes", "Main KV bytes/value", state.model.kvBytes, { min: 0.01, step: 0.01 })
+  ].join("");
+
   return `
-    <section class="control-grid">
-      <article class="control-group">
-        <div>
-          <div class="micro-label">Model</div>
-          <h3>Architecture and parameters</h3>
-        </div>
-        <div class="field">
-          <span>Preset</span>
-          <select data-group="preset" data-field="model">
-            <option value="custom" ${state.modelPresetId === "custom" ? "selected" : ""}>Custom</option>
-            ${modelPresets
-              .map(
-                (preset) => `
-                  <option value="${preset.id}" ${state.modelPresetId === preset.id ? "selected" : ""}>${preset.name}</option>
-                `
-              )
-              .join("")}
-          </select>
-        </div>
-        <div class="field-grid">
-          <label class="field">
-            <span>Name</span>
-            <input data-group="model" data-field="name" value="${state.model.name}" />
-          </label>
-          <label class="field">
-            <span>Architecture</span>
-            <select data-group="model" data-field="architecture">
-              <option value="dense" ${state.model.architecture === "dense" ? "selected" : ""}>Dense</option>
-              <option value="moe" ${state.model.architecture === "moe" ? "selected" : ""}>MoE</option>
-              <option value="mla" ${state.model.architecture === "mla" ? "selected" : ""}>MLA</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Total params (B)</span>
-            <input data-group="model" data-field="totalParamsB" type="number" min="1" step="0.1" value="${state.model.totalParamsB}" />
-          </label>
-          <label class="field">
-            <span>Active params (B)</span>
-            <input data-group="model" data-field="activeParamsB" type="number" min="1" step="0.1" value="${state.model.activeParamsB}" />
-          </label>
-          <label class="field">
-            <span>Layers</span>
-            <input data-group="model" data-field="layers" type="number" min="1" step="1" value="${state.model.layers}" />
-          </label>
-          <label class="field">
-            <span>KV heads</span>
-            <input data-group="model" data-field="kvHeads" type="number" min="1" step="1" value="${state.model.kvHeads}" />
-          </label>
-          <label class="field">
-            <span>Head dim</span>
-            <input data-group="model" data-field="headDim" type="number" min="1" step="1" value="${state.model.headDim}" />
-          </label>
-          <label class="field">
-            <span>Weight bytes</span>
-            <input data-group="model" data-field="weightBytes" type="number" min="0.1" step="0.1" value="${state.model.weightBytes}" />
-          </label>
-          <label class="field">
-            <span>KV bytes</span>
-            <input data-group="model" data-field="kvBytes" type="number" min="0.1" step="0.1" value="${state.model.kvBytes}" />
-          </label>
-          <label class="field">
-            <span>MLA factor</span>
-            <input data-group="model" data-field="mlaReduction" type="number" min="0.01" max="1" step="0.01" value="${state.model.mlaReduction}" />
-          </label>
-        </div>
-      </article>
-      <article class="control-group">
-        <div class="control-header">
-          <div>
-            <div class="micro-label">Hardware</div>
-            <h3>GPU envelope</h3>
+    <section class="control-area" aria-label="Sizing inputs">
+      <div class="control-grid primary-controls">
+        <article class="control-group">
+          <div class="control-header"><div><div class="micro-label">1 · Model</div><h3>Choose a model</h3></div><button type="button" class="control-info-button" data-action="open-topic" data-topic="architecture" aria-controls="topic-sidebar" aria-expanded="${state.sidebarOpen}" aria-label="Explain model architecture">Info</button></div>
+          ${renderSelectField("preset", "model", "Model preset", state.modelPresetId, modelPresetOptions)}
+        <p class="support-copy">${escapeHtml(state.model.name)} · ${getArchitectureLabel(state.model)} · ${formatNumber(state.model.totalParamsB, 1)}B stored${state.model.parameterization === "moe" ? ` · ${formatNumber(state.model.activeParamsB, 1)}B active/token${state.model.id === "deepseek-v32" ? " (estimate)" : ""}` : ""}</p>
+        </article>
+        <article class="control-group">
+          <div class="control-header"><div><div class="micro-label">2 · Hardware</div><h3>Choose accelerators</h3></div><button type="button" class="control-info-button" data-action="open-topic" data-topic="hardware-envelope" aria-controls="topic-sidebar" aria-expanded="${state.sidebarOpen}" aria-label="Explain hardware assumptions">Info</button></div>
+          ${renderSelectField("preset", "hardware", "Hardware preset", state.hardwarePresetId, hardwarePresetOptions)}
+          ${renderNumberField("hardware", "gpuCount", "GPU count", state.hardware.gpuCount, { min: 1, step: 1 })}
+          <p class="support-copy">${escapeHtml(state.hardware.name)} · ${formatGB(results.totalSystemVramGB)} aggregate VRAM</p>
+        </article>
+        <article class="control-group">
+          <div class="control-header"><div><div class="micro-label">3 · Workload</div><h3>Set active request mix</h3></div><button type="button" class="control-info-button" data-action="open-topic" data-topic="workload-reference" aria-controls="topic-sidebar" aria-expanded="${state.sidebarOpen}" aria-label="Explain workload inputs">Info</button></div>
+          <div class="field-grid">
+            ${renderNumberField("workload", "promptTokens", "Prompt tokens/request", state.workload.promptTokens, { min: 1, step: 128 })}
+            ${renderNumberField("workload", "outputTokens", "Output tokens/request", state.workload.outputTokens, { min: 0, step: 128 })}
+            ${renderNumberField("workload", "concurrentUsers", "Concurrent requests", state.workload.concurrentUsers, { min: 1, step: 1 })}
           </div>
-          <button
-            type="button"
-            class="control-info-button"
-            data-action="open-topic"
-            data-topic="hardware-envelope"
-            aria-label="Open hardware envelope explanation"
-          >
-            Info
-          </button>
-        </div>
-        <div class="field">
-          <span>Preset</span>
-          <select data-group="preset" data-field="hardware">
-            <option value="custom" ${state.hardwarePresetId === "custom" ? "selected" : ""}>Custom</option>
-            ${hardwarePresets
-              .map(
-                (preset) => `
-                  <option value="${preset.id}" ${state.hardwarePresetId === preset.id ? "selected" : ""}>${preset.name}</option>
-                `
-              )
-              .join("")}
-          </select>
-        </div>
-        <div class="field-grid">
-          <label class="field">
-            <span>GPU count</span>
-            <input data-group="hardware" data-field="gpuCount" type="number" min="1" step="1" value="${state.hardware.gpuCount}" />
-          </label>
-          <label class="field">
-            <span>VRAM (GB)</span>
-            <input data-group="hardware" data-field="vramGB" type="number" min="1" step="1" value="${state.hardware.vramGB}" />
-          </label>
-          <label class="field">
-            <span>Peak bandwidth (TB/s)</span>
-            <input data-group="hardware" data-field="bandwidthTBps" type="number" min="0.1" step="0.01" value="${state.hardware.bandwidthTBps}" />
-          </label>
-          <label class="field">
-            <span>Peak compute (TFLOPS)</span>
-            <input data-group="hardware" data-field="computeTFLOPS" type="number" min="1" step="1" value="${state.hardware.computeTFLOPS}" />
-          </label>
-          <label class="field">
-            <span>Decode efficiency (%)</span>
-            <input data-group="hardware" data-field="decodeEfficiencyPct" type="number" min="10" max="100" step="1" value="${state.hardware.decodeEfficiencyPct}" />
-          </label>
-          <label class="field">
-            <span>Prefill efficiency (%)</span>
-            <input data-group="hardware" data-field="prefillEfficiencyPct" type="number" min="10" max="100" step="1" value="${state.hardware.prefillEfficiencyPct}" />
-          </label>
-          <label class="field">
-            <span>Multi-GPU scaling (%)</span>
-            <input data-group="hardware" data-field="multiGpuEfficiencyPct" type="number" min="10" max="100" step="1" value="${state.hardware.multiGpuEfficiencyPct}" />
-          </label>
-        </div>
-        <div class="support-copy">Peak fields are spec-sheet ceilings. Percentage fields discount those ceilings into usable throughput for planning.</div>
-      </article>
-      <article class="control-group">
-        <div class="control-header">
-          <div>
-            <div class="micro-label">Workload</div>
-            <h3>Context, concurrency, and caution</h3>
+          <div class="action-row">
+            ${scenarioPresets.map((preset) => `
+              <button type="button" class="scenario-preset ${state.workload.promptTokens + state.workload.outputTokens === preset ? "active" : ""}" data-action="load-sequence-preset" data-sequence="${preset}" aria-pressed="${state.workload.promptTokens + state.workload.outputTokens === preset}">
+                ${formatCompact(preset, 1)} prompt + output
+              </button>`).join("")}
           </div>
-          <button
-            type="button"
-            class="control-info-button"
-            data-action="open-topic"
-            data-topic="workload-reference"
-            aria-label="Open workload reference"
-          >
-            Info
-          </button>
+        </article>
+      </div>
+      <details class="advanced-controls" data-advanced-controls ${state.advancedControlsOpen ? "open" : ""}>
+        <summary><span>Advanced assumptions</span><small>Model dimensions, precision, hardware efficiency, and memory margin</small></summary>
+        <div class="control-grid advanced-grid">
+          <article class="control-group"><div><div class="micro-label">Model details</div><h3>Architecture and precision</h3></div><div class="field-grid">${modelFields}</div><p class="support-copy">Bytes per weight/cache value are effective storage sizes. Quantization scales, packing, and runtime metadata need extra allowance. A zero max sequence length means no model limit is configured here.</p></article>
+          <article class="control-group"><div><div class="micro-label">Hardware details</div><h3>Peak ceilings and efficiency</h3></div><div class="field-grid">
+            ${renderNumberField("hardware", "vramGB", "VRAM (GB/GPU)", state.hardware.vramGB, { min: 1, step: 1 })}
+            ${renderNumberField("hardware", "bandwidthTBps", "Peak HBM bandwidth (TB/s)", state.hardware.bandwidthTBps, { min: 0.01, step: 0.01 })}
+            ${renderNumberField("hardware", "computeTFLOPS", "Dense FP16/BF16 peak (TFLOPS)", state.hardware.computeTFLOPS, { min: 1, step: 1 })}
+            ${renderNumberField("hardware", "decodeEfficiencyPct", "Decode HBM efficiency (%)", state.hardware.decodeEfficiencyPct, { min: 10, max: 100, step: 1 })}
+            ${renderNumberField("hardware", "decodeComputeEfficiencyPct", "Decode compute efficiency (%)", state.hardware.decodeComputeEfficiencyPct, { min: 10, max: 100, step: 1 })}
+            ${renderNumberField("hardware", "prefillEfficiencyPct", "Prefill compute efficiency (%)", state.hardware.prefillEfficiencyPct, { min: 10, max: 100, step: 1 })}
+            ${renderNumberField("hardware", "multiGpuEfficiencyPct", "Multi-GPU scaling (%)", state.hardware.multiGpuEfficiencyPct, { min: 10, max: 100, step: 1 })}
+          </div><p class="support-copy">Match peak compute to the dtype, accumulation mode, and dense (non-sparse) kernel path. Rubin specs are preliminary; efficiency values are editable assumptions, not benchmark data.</p></article>
+          <article class="control-group"><div><div class="micro-label">Memory and reasoning</div><h3>Planning margin</h3></div><div class="field-grid">
+            ${renderNumberField("workload", "overheadMultiplier", "Memory safety factor", state.workload.overheadMultiplier, { min: 1, max: 2, step: 0.01 })}
+            ${renderNumberField("workload", "hiddenReasoningTokens", "Hidden reasoning tokens", state.workload.hiddenReasoningTokens, { min: 0, step: 128 })}
+          </div><p class="support-copy">The safety factor applies to weights plus live KV. It is not a universal runtime overhead.</p></article>
         </div>
-        <div class="field-grid">
-          <label class="field">
-            <span>Prompt tokens</span>
-            <input data-group="workload" data-field="promptTokens" type="number" min="1" step="128" value="${state.workload.promptTokens}" />
-          </label>
-          <label class="field">
-            <span>Output tokens</span>
-            <input data-group="workload" data-field="outputTokens" type="number" min="0" step="128" value="${state.workload.outputTokens}" />
-          </label>
-          <label class="field">
-            <span>Concurrent users</span>
-            <input data-group="workload" data-field="concurrentUsers" type="number" min="1" step="1" value="${state.workload.concurrentUsers}" />
-          </label>
-          <label class="field">
-            <span>Overhead multiplier</span>
-            <input data-group="workload" data-field="overheadMultiplier" type="number" min="1.05" max="2" step="0.01" value="${state.workload.overheadMultiplier}" />
-          </label>
-          <label class="field">
-            <span>Hidden reasoning tokens</span>
-            <input data-group="workload" data-field="hiddenReasoningTokens" type="number" min="0" step="128" value="${state.workload.hiddenReasoningTokens}" />
-          </label>
-        </div>
-        <div class="action-row">
-          ${scenarioPresets
-            .map(
-              (preset) => `
-                <button
-                  type="button"
-                  class="scenario-preset ${state.workload.promptTokens + state.workload.outputTokens === preset ? "active" : ""}"
-                  data-action="load-sequence-preset"
-                  data-sequence="${preset}"
-                >
-                  ${formatCompact(preset, 1)} total sequence
-                </button>
-              `
-            )
-            .join("")}
-        </div>
-        <div class="action-row">
-          <button type="button" class="action-button" data-action="load-worked-example">Reset to Velvet 14B / A100</button>
-        </div>
-      </article>
+      </details>
+      <div class="action-row control-actions"><button type="button" class="action-button" data-action="load-worked-example">Reset example</button></div>
     </section>
   `;
 }
@@ -1342,24 +1408,38 @@ function renderGuideVisual(sectionId, results) {
     const cards = [
       {
         id: "dense",
-        title: "Dense",
+        title: "Dense parameters",
         topic: "architecture",
-        detail: "Storage and speed both track the full model.",
-        signal: `${formatNumber(state.model.totalParamsB, 1)}B active`
+        detail: "All stored parameters are active per token.",
+        signal: "P_active = P_total"
       },
       {
         id: "moe",
-        title: "MoE",
+        title: "Mixture of experts",
         topic: "architecture",
-        detail: "Storage tracks total params, speed tracks active params.",
-        signal: `${formatNumber(getActiveParams({ ...state.model, architecture: "moe" }), 1)}B active`
+        detail: "Store all experts; activate a subset per token.",
+        signal: `${formatNumber(state.model.activeParamsB, 1)}B active / ${formatNumber(state.model.totalParamsB, 1)}B total`
+      },
+      {
+        id: "gqa",
+        title: "GQA attention",
+        topic: "architecture",
+        detail: "KV storage follows the configured key/value head count.",
+        signal: "2 × KV heads × head dim"
       },
       {
         id: "mla",
-        title: "MLA",
+        title: "MLA attention",
         topic: "architecture",
-        detail: "Sparse intuition plus compressed KV behavior.",
-        signal: `${formatNumber(state.model.mlaReduction * 100, 0)}% KV factor`
+        detail: "KV storage follows latent rank plus positional key dimensions.",
+        signal: `${formatNumber(state.model.mlaKvRank + state.model.mlaRopeDim, 0)} values/layer/token`
+      },
+      {
+        id: "dsa",
+        title: "Sparse attention (DSA)",
+        topic: "architecture",
+        detail: "An indexer scores context positions, then attention uses a top-k subset.",
+        signal: state.model.sparseAttentionTopK > 0 ? `top ${formatNumber(state.model.sparseAttentionTopK, 0)}` : "not configured"
       }
     ];
 
@@ -1368,7 +1448,7 @@ function renderGuideVisual(sectionId, results) {
         ${cards
           .map(
             (card) => `
-              <button type="button" class="topic-button ${state.model.architecture === card.id ? "active" : ""}" data-action="focus-topic" data-topic="${card.topic}">
+              <button type="button" class="topic-button ${card.id === state.model.parameterization || card.id === state.model.attentionType || (card.id === "dsa" && state.model.sparseAttentionTopK > 0) ? "active" : ""}" data-action="focus-topic" data-topic="${card.topic}">
                 <div class="section-kicker">${card.title}</div>
                 <strong>${card.signal}</strong>
                 <div class="support-copy">${card.detail}</div>
@@ -1409,15 +1489,15 @@ function renderGuideVisual(sectionId, results) {
         <button type="button" class="visual-button half" data-action="focus-topic" data-topic="kv-cache">
           <div class="section-kicker">Per active user</div>
           <strong>${formatGB(results.kvPerUserGB)}</strong>
-          <div class="support-copy">${formatTokens(results.totalSequenceTokens)} total tokens across ${state.model.layers} layers and ${state.model.kvHeads} KV heads.</div>
+          <div class="support-copy">${formatTokens(results.totalSequenceTokens)} tokens · ${state.model.layers} layers · ${getArchitectureLabel(state.model)}.</div>
         </button>
         <div class="visual-panel half">
           <div class="metric-label">Growth drivers</div>
           <div class="chip-row" style="margin-top: 12px;">
             <div class="chip"><strong>${formatTokens(results.totalSequenceTokens)}</strong> sequence</div>
             <div class="chip"><strong>${formatNumber(state.model.layers, 0)}</strong> layers</div>
-            <div class="chip"><strong>${formatNumber(state.model.kvHeads, 0)}</strong> KV heads</div>
-            <div class="chip"><strong>${formatNumber(getKvReduction(state.model), 2)}×</strong> KV factor</div>
+            <div class="chip"><strong>${formatCompact(results.kvBytesPerTokenPerLayer, 1)}</strong> bytes/layer/token</div>
+            <div class="chip"><strong>${formatNumber(results.slidingWindowLayers, 0)}</strong> sliding-window layers</div>
           </div>
         </div>
       </div>
@@ -1463,12 +1543,12 @@ function renderGuideVisual(sectionId, results) {
           <div class="metric-label">Throughput split</div>
           <div class="topic-stat-row" style="margin-top: 12px;">
             <div class="topic-stat-card">
-              <div class="metric-label">Single-stream floor</div>
+            <div class="metric-label">Single-stream roofline</div>
               <div class="topic-stat">${formatNumber(results.decodeTps, 0)} tok/s</div>
             </div>
             <div class="topic-stat-card">
-              <div class="metric-label">Per active user</div>
-              <div class="topic-stat">${formatNumber(results.tpsPerUser, 1)} tok/s</div>
+              <div class="metric-label">Packed-batch range</div>
+              <div class="topic-stat">${formatNumber(results.batchDecodeThroughputLowTps, 1)}–${formatNumber(results.batchDecodeThroughputHighTps, 1)} tok/s</div>
             </div>
           </div>
         </div>
@@ -1485,9 +1565,9 @@ function renderGuideVisual(sectionId, results) {
           <div class="support-copy">Prompt tokens: ${formatTokens(state.workload.promptTokens)} • usable prefill compute: ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS</div>
         </button>
         <div class="visual-panel half">
-          <div class="metric-label">Reasoning-aware answer start</div>
-          <div class="topic-stat" style="margin-top: 10px;">${formatDuration(results.answerStartSec)}</div>
-          <div class="support-copy" style="margin-top: 8px;">Adds ${formatTokens(state.workload.hiddenReasoningTokens)} hidden reasoning tokens as a separate interpretive delay.</div>
+          <div class="metric-label">Prompt work estimate</div>
+          <div class="topic-stat" style="margin-top: 10px;">${formatCompact(results.totalPrefillFLOPs, 2)} FLOPs</div>
+          <div class="support-copy" style="margin-top: 8px;">Includes ${formatCompact(results.attentionPrefillFLOPs, 2)} attention FLOPs. Compute floor: ${formatDuration(results.ttftFloorSec)}; hidden-token floor: ${formatDuration(results.answerStartFloorSec)}.</div>
         </div>
       </div>
     `;
@@ -1505,8 +1585,8 @@ function renderScenarioGrid() {
           const isActive = state.workload.promptTokens + state.workload.outputTokens === sequence;
           return `
             <button type="button" class="scenario-card ${isActive ? "active" : ""}" data-action="load-sequence-preset" data-sequence="${sequence}">
-              <div class="section-kicker">${formatCompact(sequence, 1)} context</div>
-              <strong>${formatNumber(scenario.memoryBoundConcurrency, 0)} users</strong>
+              <div class="section-kicker">${formatCompact(sequence, 1)} sequence</div>
+              <strong>${formatNumber(scenario.memoryBoundConcurrency, 0)} requests fit</strong>
               <div class="support-copy">${formatGB(scenario.kvPerUserGB)} KV per active user</div>
             </button>
           `;
@@ -1520,7 +1600,7 @@ function renderMetricHeader(label, topicId) {
   return `
     <div class="metric-card-header">
       <div class="metric-label">${label}</div>
-      ${topicId ? `<button type="button" class="control-info-button metric-info-button" data-action="open-topic" data-topic="${topicId}" aria-label="Open ${label} explanation">Info</button>` : ""}
+      ${topicId ? `<button type="button" class="control-info-button metric-info-button" data-action="open-topic" data-topic="${topicId}" aria-controls="topic-sidebar" aria-expanded="${state.sidebarOpen}" aria-label="Open ${label} explanation">Info</button>` : ""}
     </div>
   `;
 }
@@ -1562,78 +1642,74 @@ function renderGuideView(results) {
 }
 
 function renderSandboxView(results) {
-  const experienceClass = results.fitsInMemory ? results.experienceTone : "overflow";
-  const experienceCopy = results.fitsInMemory ? results.experienceReason : results.zoneReason;
-  const ragCapacityLine =
-    results.acceptableRagConcurrency !== results.memoryBoundConcurrency
-      ? `Memory-bound max: ${formatNumber(results.memoryBoundConcurrency, 0)} users • Acceptable RAG max: ${formatNumber(results.acceptableRagConcurrency, 0)} users.`
-      : `Practical max concurrency: ${formatNumber(results.acceptableRagConcurrency, 0)} users.`;
   return `
-    <section class="guide-stack">
+    <section class="results-stack" aria-label="Sizing results">
       <div class="metric-grid">
         <article class="metric-card accent">
-          ${renderMetricHeader("Weight memory", "weight-vram")}
+          ${renderMetricHeader("Model weights", "weight-vram")}
           <div class="metric-value">${formatGB(results.weightMemoryGB)}</div>
-          <div class="metric-subtext">Raw resident model size from total parameters and weight precision.</div>
+          <div class="metric-subtext">${formatNumber(state.model.totalParamsB, 1)}B total parameters × ${formatNumber(state.model.weightBytes, 2)} bytes.</div>
         </article>
         <article class="metric-card cyan">
-          ${renderMetricHeader("KV per user", "kv-cache")}
+          ${renderMetricHeader("KV per request", "kv-cache")}
           <div class="metric-value">${formatGB(results.kvPerUserGB)}</div>
-          <div class="metric-subtext">At ${formatTokens(results.totalSequenceTokens)} total sequence tokens.</div>
+          <div class="metric-subtext">${formatTokens(results.totalSequenceTokens)} live tokens at the configured ${getArchitectureLabel(state.model)} layout${results.maxContextTokens > 0 ? ` · ${formatTokens(results.maxContextTokens)} token limit` : ""}.</div>
         </article>
         <article class="metric-card ${results.fitsInMemory ? "success" : "warning"}">
-          ${renderMetricHeader("Total estimated VRAM", "overhead")}
+          ${renderMetricHeader("Memory fit", "overhead")}
+          <div class="zone-pill ${results.fitsInMemory ? "comfortable" : "overflow"}">${results.fitsInMemory ? "Fits with margin" : "Exceeds budget"}</div>
           <div class="metric-value">${formatGB(results.requiredVramGB)}</div>
-          <div class="metric-subtext">${results.fitsInMemory ? "Fits inside the selected card envelope." : "Exceeds the selected card envelope."}</div>
+          <div class="metric-subtext">Planned demand vs ${formatGB(results.totalSystemVramGB)} aggregate VRAM.</div>
         </article>
         <article class="metric-card accent">
-          ${renderMetricHeader("Service throughput", "decode")}
-          <div class="metric-value">${formatNumber(results.serviceThroughputTps, 0)} tok/s</div>
-          <div class="metric-subtext"><strong>${formatNumber(results.tpsPerUser, 1)} tok/s per user</strong> at the selected concurrency.</div>
-          <div class="metric-subtext">Concurrency-aware throughput from usable decode bandwidth plus the QA / RAG per-user speed heuristic.</div>
+          ${renderMetricHeader("Single-sequence decode roofline", "decode")}
+          <div class="metric-value">${formatNumber(results.decodeTps, 1)} tok/s</div>
+          <div class="metric-subtext">min(${formatNumber(results.decodeBandwidthBoundTps, 1)} HBM-bound, ${formatNumber(results.decodeComputeBoundTps, 1)} compute-bound).</div>
+          <div class="metric-subtext">Theoretical ceiling before attention, queueing, and runtime overhead.</div>
         </article>
         <article class="metric-card cyan">
-          ${renderMetricHeader("TTFT under load", "ttft")}
-          <div class="metric-value">${formatDuration(results.ttftUnderLoadSec)}</div>
-          <div class="metric-subtext">Relative to a usable-compute floor of ${formatDuration(results.ttftFloorSec)}.</div>
+          ${renderMetricHeader("Packed-batch decode bound", "decode")}
+          <div class="metric-value">${formatNumber(results.batchDecodeThroughputLowTps, 1)}–${formatNumber(results.batchDecodeThroughputHighTps, 1)} tok/s</div>
+          <div class="metric-subtext">Aggregate ceiling for ${formatNumber(state.workload.concurrentUsers, 0)} simultaneous decode sequences.</div>
+          <div class="metric-subtext">MoE range reflects unknown expert reuse; actual scheduling can lower throughput.</div>
         </article>
-        <article class="metric-card ${experienceClass === "comfortable" ? "success" : experienceClass === "tight" ? "accent" : "warning"}">
-          ${renderMetricHeader("Typical experience")}
-          <div class="zone-pill ${experienceClass}">${results.fitsInMemory ? results.experienceLabel : "Does not fit"}</div>
-          <div class="metric-subtext">${experienceCopy}</div>
-          <div class="action-row">
-            <button type="button" class="action-button" data-action="open-topic" data-topic="operating-zone">Explain this rating</button>
-          </div>
+        <article class="metric-card">
+          ${renderMetricHeader("Prompt compute floor", "ttft")}
+          <div class="metric-value">${formatDuration(results.ttftFloorSec)}</div>
+          <div class="metric-subtext">From ${formatCompact(results.totalPrefillFLOPs, 2)} FLOPs and ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} usable TFLOPS.</div>
+          <div class="metric-subtext">Lower bound; not predicted TTFT.</div>
         </article>
       </div>
       <article class="guide-card">
         <div class="guide-card-header">
           <div>
             <div class="section-kicker">Memory composition</div>
-            <h3>Show the post-overhead memory demand and the likely human feel for the selected concurrency.</h3>
+            <h3>See what occupies memory and how the selected safety factor changes the fit check.</h3>
           </div>
         </div>
         <div class="visual-grid">
           <div class="visual-panel half">
-            <div class="metric-label">Budget after overhead</div>
-            <div class="topic-stat" style="margin-top: 10px;">${formatGB(results.usableBudgetGB)}</div>
-            <div class="support-copy" style="margin-top: 8px;">Usable planning budget across ${formatNumber(results.gpuCount, 0)} GPUs. Planned demand is combined weights + total cache × ${formatNumber(state.workload.overheadMultiplier, 2)}.</div>
-            <div class="support-copy" style="margin-top: 8px;">Speed uses peak hardware discounted into usable bandwidth and usable compute. Multi-GPU scenarios also apply the selected scaling discount instead of assuming perfect linear speedup.</div>
+            <div class="metric-label">Requested vs aggregate accelerator memory</div>
+            <div class="topic-stat" style="margin-top: 10px;">${formatGB(results.requiredVramGB)} / ${formatGB(results.totalSystemVramGB)}</div>
+            <div class="support-copy" style="margin-top: 8px;">Demand is (weights + ${formatNumber(state.workload.concurrentUsers, 0)} request caches) × ${formatNumber(state.workload.overheadMultiplier, 2)} safety factor.</div>
+            <div class="support-copy" style="margin-top: 8px;">Fit assumes even sharding. Per-GPU replication, workspaces, cache blocks, and runtime reservations are not calculated separately.</div>
             <div class="stack-meter" style="margin-top: 12px;">
-              <div class="${results.fitsInMemory ? "stack-fill" : "stack-over"}" style="width: ${clamp((results.requiredVramGB / results.totalSystemVramGB) * 100, 0, 100)}%"></div>
+              <div class="stack-fill" style="width: ${clamp((results.weightMemoryGB / results.totalSystemVramGB) * 100, 0, 100)}%"></div>
+              <div class="stack-kv" style="left: ${clamp((results.weightMemoryGB / results.totalSystemVramGB) * 100, 0, 100)}%; width: ${clamp((results.totalKvGB / results.totalSystemVramGB) * 100, 0, Math.max(0, 100 - (results.weightMemoryGB / results.totalSystemVramGB) * 100))}%"></div>
+              ${results.requiredVramGB > results.totalSystemVramGB ? `<div class="stack-over" style="left: 0; width: 100%; opacity: 0.45"></div>` : ""}
             </div>
             <div class="stack-legend" style="margin-top: 12px;">
-              <span><span class="legend-dot" style="background: var(--accent);"></span>Planned demand ${formatGB(results.requiredVramGB)}</span>
-              <span><span class="legend-dot" style="background: rgba(255,255,255,0.08);"></span>Total cluster VRAM ${formatGB(results.totalSystemVramGB)}</span>
+              <span><span class="legend-dot" style="background: var(--accent);"></span>Weights ${formatGB(results.weightMemoryGB)}</span>
+              <span><span class="legend-dot" style="background: var(--cyan);"></span>KV ${formatGB(results.totalKvGB)}</span>
+              <span><span class="legend-dot" style="background: rgba(255,255,255,0.08);"></span>Capacity ${formatGB(results.totalSystemVramGB)}</span>
             </div>
           </div>
           <div class="visual-panel half">
-            <div class="metric-label">RAG Q&A feel at ${formatNumber(state.workload.concurrentUsers, 0)} users</div>
-            <div class="zone-pill ${experienceClass}" style="margin-top: 10px;">${results.fitsInMemory ? results.experienceLabel : "Does not fit"}</div>
-            <div class="support-copy" style="margin-top: 12px;">~${formatNumber(results.serviceThroughputTps, 0)} total tok/s • ~${formatNumber(results.tpsPerUser, 1)} tok/s per user • ~${formatDuration(results.ttftUnderLoadSec)} TTFT under load.</div>
+            <div class="metric-label">Memory-bound concurrency ceiling</div>
+            <div class="topic-stat" style="margin-top: 10px;">${formatNumber(results.memoryBoundConcurrency, 0)} requests</div>
+            <div class="support-copy" style="margin-top: 12px;">Current workload selects ${formatNumber(state.workload.concurrentUsers, 0)} concurrent requests at ${formatTokens(results.totalSequenceTokens)} tokens each.</div>
             <div class="divider" style="margin-top: 14px;"></div>
-            <div class="support-copy" style="margin-top: 14px;">${ragCapacityLine}</div>
-            <div class="support-copy" style="margin-top: 8px;">${experienceCopy}</div>
+            <div class="support-copy" style="margin-top: 14px;">This is a fit ceiling using aggregate VRAM and the selected safety factor. It does not estimate latency, SLO capacity, or scheduler admission.</div>
           </div>
         </div>
       </article>
@@ -1645,7 +1721,6 @@ function renderSidebar(results) {
   const topicId = sidebarTopics[state.selectedTopicId] ? state.selectedTopicId : "mental-model";
   const topic = sidebarTopics[topicId] || sidebarTopics["mental-model"];
   const enhancement = topicEnhancements[topicId] || {};
-  const guideReferences = enhancement.guideReferences || [];
   const liveStats =
     typeof enhancement.liveStats === "function"
       ? enhancement.liveStats(results)
@@ -1708,19 +1783,8 @@ function renderSidebar(results) {
         </div>
       `
     : "";
-  const guideReferenceSection = guideReferences.length
-    ? `
-        <div class="sidebar-block">
-          <div class="metric-label">Inference guide references</div>
-          <ul>
-            ${guideReferences.map((reference) => `<li>${reference}</li>`).join("")}
-          </ul>
-        </div>
-      `
-    : "";
-
   return `
-    <aside class="sidebar" aria-hidden="${state.sidebarOpen ? "false" : "true"}">
+    <aside class="sidebar" id="topic-sidebar" aria-label="${topic.eyebrow}: ${topic.title}">
       <button
         type="button"
         class="sidebar-resize-handle"
@@ -1772,7 +1836,6 @@ function renderSidebar(results) {
               .join("")}
           </div>
         </div>
-        ${guideReferenceSection}
         <div class="sidebar-block">
           <div class="metric-label">Assumptions</div>
           <ul>
@@ -1792,29 +1855,44 @@ function renderSidebar(results) {
 
 function renderAttentionNote() {
   return `
-    <div class="attention-note" role="note" aria-label="Sizing caution">
-      <div class="attention-label">Attention</div>
+    <div class="attention-note" role="note" aria-label="Sizing assumptions">
+      <div class="attention-label">Planning limits</div>
       <div class="attention-copy">
-        This is a broad planning guide for understanding memory, throughput, latency, and concurrency tradeoffs. The app now separates peak hardware specs from usable throughput assumptions, but actual results can still vary materially based on runtime, batching, kernels, interconnect, scheduler behavior, and implementation details.
+        Use output rates as planning ceilings and memory fit as a first-order check. Fit assumes even sharding. Runtime reservations, cache-page rounding, shared prefixes, MoE interconnect, scheduler effects, and optional MTP compute are omitted; DSA indexer FLOPs are approximate and runtime-specific index-cache sharing is not modeled. Replace editable values with exact checkpoint and runtime measurements before deployment sizing.
       </div>
+      <details class="source-details">
+        <summary>Model, runtime, and hardware sources</summary>
+        <div class="source-links">
+          <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2" target="_blank" rel="noreferrer">DeepSeek V3.2 model card</a>
+          <a href="https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/main/inference/config_671B_v3.2.json" target="_blank" rel="noreferrer">V3.2 inference config</a>
+          <a href="https://arxiv.org/abs/2512.02556" target="_blank" rel="noreferrer">V3.2 DSA report</a>
+          <a href="https://docs.vllm.ai/en/stable/design/hybrid_kv_cache_manager/" target="_blank" rel="noreferrer">vLLM hybrid KV cache</a>
+          <a href="https://github.com/vllm-project/vllm/blob/main/docs/features/index_cache.md" target="_blank" rel="noreferrer">vLLM IndexCache</a>
+          <a href="https://docs.vllm.ai/en/stable/design/prefix_caching/" target="_blank" rel="noreferrer">Prefix caching</a>
+          <a href="https://www.nvidia.com/en-eu/data-center/hgx/" target="_blank" rel="noreferrer">NVIDIA accelerator specs</a>
+          <a href="https://www.amd.com/en/products/accelerators/instinct/mi350/mi355x.html" target="_blank" rel="noreferrer">AMD MI355X specs</a>
+        </div>
+      </details>
     </div>
   `;
 }
 
 function renderMain(results) {
-  return renderSandboxView(results);
+  return state.mode === "guide" ? renderGuideView(results) : renderSandboxView(results);
 }
 
 function renderApp() {
   const results = calculateSizing(state.model, state.hardware, state.workload);
-  const workspaceClass = `no-rail ${state.sidebarOpen ? "sidebar-open" : "sidebar-closed"}`;
+  const workspaceClass = `${state.mode === "guide" ? "has-rail" : "no-rail"} ${state.sidebarOpen ? "sidebar-open" : "sidebar-closed"}`;
 
   app.innerHTML = `
     <div class="app-shell" style="--sidebar-width: ${state.sidebarWidth}px;">
       <div class="workspace ${workspaceClass}">
+        ${state.mode === "guide" ? renderSectionRail() : ""}
         <main class="main-column">
           ${renderHeroStrip(results)}
           ${renderAttentionNote()}
+          ${renderContextLimitNote(results)}
           ${renderControlDeck(results)}
           ${renderMain(results)}
         </main>
@@ -1849,6 +1927,7 @@ document.addEventListener("click", (event) => {
 
   if (action === "open-topic") {
     state.selectedTopicId = target.dataset.topic;
+    state.lastSidebarTriggerTopicId = target.dataset.topic;
     state.sidebarOpen = true;
   }
 
@@ -1866,12 +1945,18 @@ document.addEventListener("click", (event) => {
 
   if (action === "load-sequence-preset") {
     const totalSequence = Number(target.dataset.sequence);
-    state.workload.promptTokens = totalSequence;
-    state.workload.outputTokens = 0;
+    Object.assign(state.workload, getSequenceMix(totalSequence));
     state.selectedTopicId = "concurrency";
   }
 
   renderApp();
+  if (state.sidebarOpen && ["open-topic", "open-sidebar"].includes(action)) {
+    document.querySelector(".sidebar-close")?.focus();
+  } else if (action === "close-sidebar") {
+    const trigger = Array.from(document.querySelectorAll('[data-action="open-topic"]'))
+      .find((button) => button.dataset.topic === state.lastSidebarTriggerTopicId);
+    trigger?.focus();
+  }
 });
 
 document.addEventListener("change", (event) => {
@@ -1916,7 +2001,7 @@ document.addEventListener("change", (event) => {
         ? "hardware-envelope"
         :
     group === "model"
-      ? field === "architecture"
+      ? field === "parameterization" || field === "attentionType"
         ? "architecture"
         : "weight-vram"
       : group === "hardware"
@@ -1926,12 +2011,16 @@ document.addEventListener("change", (event) => {
           : "concurrency";
 
   renderApp();
+  document.querySelector(`[data-group="${group}"][data-field="${field}"]`)?.focus({ preventScroll: true });
 });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && state.sidebarOpen) {
     state.sidebarOpen = false;
     renderApp();
+    const trigger = Array.from(document.querySelectorAll('[data-action="open-topic"]'))
+      .find((button) => button.dataset.topic === state.lastSidebarTriggerTopicId);
+    trigger?.focus();
   }
 });
 
@@ -1966,3 +2055,9 @@ document.addEventListener("pointerdown", (event) => {
 });
 
 renderApp();
+
+document.addEventListener("toggle", (event) => {
+  if (event.target.matches("details[data-advanced-controls]")) {
+    state.advancedControlsOpen = event.target.open;
+  }
+});
