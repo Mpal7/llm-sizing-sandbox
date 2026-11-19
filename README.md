@@ -83,13 +83,26 @@ single_sequence_tokens/s ≤ min(
 
 Dense models use all stored parameters as active. MoE models use the configured active count for per-token work but all stored parameters for weight memory. The packed-batch range estimates weight reuse: its MoE low end assumes little expert overlap and its high end assumes requests reuse the same active experts. Both are capped by the single-token compute roofline. These are ideal synchronized decode bounds; KV/indexer reads, interconnect traffic, routing, speculative decoding, batching gaps, queueing, and runtime overhead can lower or change actual throughput.
 
+The human-facing full-concurrency estimate uses a cautious no-weight-reuse case:
+
+```text
+conservative_tokens/s_per_person = min(
+  single_sequence_ceiling,
+  low_packed_batch_ceiling
+) / concurrent_requests
+ideal_packed_tokens/s_per_person = packed_batch_tokens/s / concurrent_requests
+```
+
+The first rate divides capacity among every configured request and drives the rough “how smooth will it feel?” label. The packed-batch rate is shown separately because real serving can reuse weight reads across requests. Both are theoretical ceilings, not measured service rates; queueing and runtime behavior can make real output slower. The feel labels are a rough guide, not a user study.
+
 ### Prompt compute and first visible answer
 
 ```text
 linear_prefill_FLOPs ≈ 2 × active_parameters × prompt_tokens
-prompt_compute_floor = (linear_prefill_FLOPs + attention_FLOPs) / effective_prefill_compute
-first_visible_answer_floor = prompt_compute_floor
-                             + hidden_reasoning_tokens / single_sequence_decode_rate
+single_prompt_compute_floor = (linear_prefill_FLOPs + attention_FLOPs) / effective_prefill_compute
+synchronized_prompts_floor = concurrent_requests × single_prompt_compute_floor
+first_visible_answer_floor = synchronized_prompts_floor
+                             + hidden_reasoning_tokens / conservative_tokens/s_per_person
 ```
 
 Attention FLOPs are approximate. For a query with `N` causal positions and an attention window `W`, the calculator counts `N(N+1)/2` pairs when `N ≤ W`; otherwise it counts `W(W+1)/2 + (N-W)W` pairs. The main attention term is `2 × query_heads × (QK_dim + value_dim) × pairs × attention_layers`. Sliding windows and DSA top-k reduce the main attention pairs. For DSA, the calculator separately estimates full-context indexer scoring as `2 × indexer_heads × indexer_key_dim × full_causal_pairs × layers`. This indexer term can be large for long prompts. It omits projection/decompression work, top-k selection cost, routing, memory stalls, kernel details, chunked prefill, and queueing. Treat both times as optimistic compute floors, not TTFT predictions.

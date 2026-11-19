@@ -361,6 +361,118 @@ div {
   gap: 10px;
 }
 
+.comfort-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 270px);
+  gap: 18px 28px;
+  align-items: center;
+  padding: 22px;
+  border: 1px solid rgba(245, 184, 83, 0.32);
+  border-radius: 24px;
+  background:
+    linear-gradient(115deg, rgba(245, 184, 83, 0.1), transparent 50%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
+    var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.comfort-card.memory-warning {
+  border-color: rgba(248, 113, 113, 0.42);
+  background:
+    linear-gradient(115deg, rgba(248, 113, 113, 0.11), transparent 52%),
+    var(--panel);
+}
+
+.comfort-main {
+  display: grid;
+  gap: 9px;
+}
+
+.comfort-main h3 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.08;
+}
+
+.comfort-main p {
+  margin: 0;
+  max-width: 76ch;
+  color: rgba(238, 242, 255, 0.8);
+  line-height: 1.55;
+}
+
+.comfort-main p strong {
+  color: var(--text);
+}
+
+.comfort-main .support-copy {
+  font-size: 14px;
+}
+
+.comfort-stat {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(4, 8, 14, 0.42);
+}
+
+.comfort-stat > strong {
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 1;
+}
+
+.comfort-stat > strong span {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.comfort-badge {
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.comfort-badge.fluid,
+.comfort-badge.smooth {
+  color: #c5f7d6;
+  border-color: rgba(134, 239, 172, 0.3);
+  background: rgba(134, 239, 172, 0.1);
+}
+
+.comfort-badge.steady {
+  color: #ffe3ac;
+  border-color: rgba(245, 184, 83, 0.3);
+  background: rgba(245, 184, 83, 0.1);
+}
+
+.comfort-badge.slow,
+.comfort-badge.very-slow,
+.comfort-badge.unavailable {
+  color: #ffd0d0;
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.comfort-warning {
+  color: #ffc2c2 !important;
+}
+
+.comfort-footnote {
+  grid-column: 1 / -1;
+  padding-top: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .metric-card-header {
   display: flex;
   align-items: start;
@@ -995,7 +1107,8 @@ div {
   .hero-stats,
   .summary-grid,
   .scenario-grid,
-  .comparison-grid {
+  .comparison-grid,
+  .comfort-card {
     grid-template-columns: 1fr;
   }
 
@@ -1025,7 +1138,8 @@ div {
   .guide-card,
   .control-group,
   .summary-card,
-  .metric-card {
+  .metric-card,
+  .comfort-card {
     padding: 16px;
     border-radius: 20px;
   }
@@ -1201,6 +1315,107 @@ div {
 
 .source-links a:hover {
   color: #fff;
+}
+
+.glossary-link {
+  display: inline;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: rgba(125, 211, 252, 0.7);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.glossary-link:hover {
+  color: #fff;
+  text-decoration-color: var(--accent);
+}
+
+.info-glossary-hint {
+  margin-top: -8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.glossary-dialog {
+  width: min(640px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(84vh, 780px);
+  padding: 0;
+  overflow: auto;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.glossary-dialog::backdrop {
+  background: rgba(3, 6, 11, 0.76);
+  backdrop-filter: blur(8px);
+}
+
+.glossary-dialog-inner {
+  display: grid;
+  gap: 18px;
+  padding: clamp(20px, 4vw, 30px);
+}
+
+.glossary-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.glossary-dialog h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.08;
+}
+
+.glossary-explanation {
+  display: grid;
+  gap: 6px;
+}
+
+.glossary-explanation h3 {
+  margin: 0;
+  color: #bdeaff;
+  font-size: 14px;
+}
+
+.glossary-explanation p {
+  margin: 0;
+  color: rgba(238, 242, 255, 0.82);
+  line-height: 1.65;
+}
+
+.glossary-example {
+  padding: 14px 16px;
+  border: 1px solid rgba(245, 184, 83, 0.2);
+  border-radius: 14px;
+  background: rgba(245, 184, 83, 0.07);
+}
+
+.glossary-example h3 {
+  color: #ffd58b;
+}
+
+.glossary-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 :focus-visible {

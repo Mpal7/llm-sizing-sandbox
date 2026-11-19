@@ -556,6 +556,637 @@ const sidebarTopics = {
 
 const scenarioPresets = [4096, 8192, 32768, 128000];
 
+const glossaryTerms = [
+  {
+    id: "inference",
+    terms: ["inference"],
+    title: "Inference",
+    meaning: "Inference is the work a model does when it reads an input and produces an answer.",
+    why: "Sizing inference means estimating whether the model fits on the hardware and how quickly it can respond under your workload.",
+    example: "When someone asks a chatbot a question and the model writes a reply, that is inference."
+  },
+  {
+    id: "llm",
+    terms: ["LLM"],
+    title: "Large language model (LLM)",
+    meaning: "An LLM is a neural network trained to understand and generate text, usually by predicting one token at a time.",
+    why: "Its size, internal layout, and the length of conversations all affect how much GPU memory and processing time it needs.",
+    example: "A 14B model has about 14 billion learned values called parameters."
+  },
+  {
+    id: "gpu",
+    terms: ["GPUs", "GPU"],
+    title: "Graphics processor (GPU)",
+    meaning: "A GPU is a processor built to do many calculations at the same time. AI models use it to read prompts and generate answers.",
+    why: "The number and type of GPUs set the available memory and much of the model's potential speed.",
+    example: "Two 80 GB GPUs provide 160 GB of memory in total, though the model must be split across them to use it."
+  },
+  {
+    id: "vram",
+    terms: ["VRAM"],
+    title: "GPU memory (VRAM)",
+    meaning: "VRAM is the fast memory attached to a GPU. The model's weights and each active conversation's working data need space in it.",
+    why: "If the required memory is larger than the GPUs provide, the configured setup does not fit as modeled.",
+    example: "A model that needs 90 GB cannot fit on one 80 GB GPU, even if its calculations would otherwise be fast."
+  },
+  {
+    id: "hbm",
+    terms: ["HBM"],
+    title: "High-bandwidth memory (HBM)",
+    meaning: "HBM is the high-speed memory used by many AI GPUs. It feeds model data to the processor while it works.",
+    why: "During answer generation, the GPU repeatedly reads model weights, so HBM speed can limit how quickly tokens are produced.",
+    example: "A GPU with faster HBM can often stream a large model's weights faster, much like a wider road can carry more traffic."
+  },
+  {
+    id: "bandwidth",
+    terms: ["memory bandwidth", "effective_bandwidth", "peak_bandwidth", "bandwidth"],
+    title: "Memory bandwidth",
+    meaning: "Bandwidth is how much data the GPU can move between its memory and processor in one second.",
+    why: "A large model may be limited by how quickly its weights can be read, even when the GPU still has calculation capacity available.",
+    example: "If a model needs 28 GB of weight data for a generation step and the system can move 1.4 TB each second, the rough ceiling is about 50 such steps per second in total."
+  },
+  {
+    id: "compute",
+    terms: ["compute"],
+    title: "Compute",
+    meaning: "Compute is the GPU's ability to perform mathematical operations.",
+    why: "Reading a long prompt involves a large amount of math; the GPU's compute capacity helps set a lower limit on that work's time.",
+    example: "If a prompt needs 100 units of work and the GPU can do 50 units each second, the ideal math time is two seconds."
+  },
+  {
+    id: "tflops",
+    terms: ["TFLOPS"],
+    title: "TFLOPS",
+    meaning: "TFLOPS means trillions of math operations per second. It is a headline measure of compute speed.",
+    why: "The calculator uses it to estimate prompt-processing time, after applying an efficiency assumption.",
+    example: "A 100 TFLOPS figure means a theoretical 100 trillion operations each second. Real model serving usually reaches less."
+  },
+  {
+    id: "flops",
+    terms: ["FLOPs"],
+    title: "Floating-point operations (FLOPs)",
+    meaning: "FLOPs count the arithmetic work needed for a calculation. One operation is a small step such as a multiply or add.",
+    why: "The prompt estimate counts approximate FLOPs, then divides by the assumed usable compute speed.",
+    example: "If a prompt takes 200 trillion operations and the GPU sustains 100 trillion per second, the ideal compute time is about two seconds."
+  },
+  {
+    id: "parameters",
+    terms: ["parameters", "parameter", "params", "P_total", "total_params"],
+    title: "Model parameters",
+    meaning: "Parameters are the learned numerical values that make up a model. They hold patterns learned during training.",
+    why: "All stored parameters take memory. The parameters used for each token also determine much of the processing work.",
+    example: "A 14B model has roughly 14 billion parameters. At two bytes each, its raw weights take about 28 GB."
+  },
+  {
+    id: "active-parameters",
+    terms: ["active parameters", "active params", "P_active", "active_parameters"],
+    title: "Active parameters",
+    meaning: "Active parameters are the model values actually used to process a particular token.",
+    why: "A routed model may store many parameters but use only a smaller part for each token, which can reduce calculation and weight-reading work.",
+    example: "A model might store 100B parameters but activate 10B for each token. It still needs memory for all 100B."
+  },
+  {
+    id: "weights",
+    terms: ["model weights", "weights", "weight"],
+    title: "Model weights",
+    meaning: "Weights are the stored numerical values of the trained model. They are loaded into GPU memory before it can answer.",
+    why: "They are the model's base memory cost, before conversation memory and runtime overhead are added.",
+    example: "Fourteen billion weights stored at two bytes each take about 28 GB before other memory needs."
+  },
+  {
+    id: "precision",
+    terms: ["precision"],
+    title: "Number precision",
+    meaning: "Precision describes how many bits are used to store each model value and how finely calculations represent numbers.",
+    why: "Lower-bit storage can reduce memory use and data movement, but supported formats and answer quality matter.",
+    example: "A two-byte value uses twice the storage of a one-byte value, before any extra scale information is counted."
+  },
+  {
+    id: "fp16",
+    terms: ["FP16"],
+    title: "FP16",
+    meaning: "FP16 is a 16-bit floating-point number format, also called half precision.",
+    why: "It is one common format for storing weights or doing AI calculations; the supported GPU speed depends on the exact operation.",
+    example: "At two bytes per weight, 14 billion weights take about 28 GB in raw storage."
+  },
+  {
+    id: "bf16",
+    terms: ["BF16"],
+    title: "BF16",
+    meaning: "BF16 is a 16-bit floating-point format designed to work well for AI calculations while keeping a wide numerical range.",
+    why: "It uses two bytes per value, like FP16, but GPU performance and numerical behavior can differ.",
+    example: "A model stored in BF16 needs about two bytes for each weight before runtime overhead."
+  },
+  {
+    id: "fp8",
+    terms: ["FP8"],
+    title: "FP8",
+    meaning: "FP8 is an 8-bit floating-point format that stores each value in one byte.",
+    why: "It can roughly halve weight storage compared with a two-byte format, although real setups may need extra scaling data and compatible hardware.",
+    example: "Fourteen billion FP8 weights use about 14 GB of raw storage, compared with about 28 GB at two bytes each."
+  },
+  {
+    id: "quantization",
+    terms: ["quantization"],
+    title: "Quantization",
+    meaning: "Quantization stores model values using fewer bits so they take less space and move less data.",
+    why: "It can help a model fit or run faster, but extra scales, packing, and quality trade-offs are not captured by a simple bytes-per-value number.",
+    example: "Changing weights from two bytes each to one byte each roughly halves their raw storage."
+  },
+  {
+    id: "token",
+    terms: ["tokens", "token"],
+    title: "Token",
+    meaning: "A token is a small piece of text the model reads or writes. It may be a whole word, part of a word, punctuation, or a space.",
+    why: "Prompt length, answer length, and generation speed are all counted in tokens rather than words.",
+    example: "The word “sizing” may be one token or several, depending on the model's tokenizer."
+  },
+  {
+    id: "prompt",
+    terms: ["prompt"],
+    title: "Prompt",
+    meaning: "The prompt is all the text given to the model before it starts answering: instructions, chat history, and the current question.",
+    why: "The model must process the whole prompt first. Longer prompts take more work and use more conversation memory.",
+    example: "A customer-support prompt may include system instructions, a policy excerpt, earlier messages, and the latest question."
+  },
+  {
+    id: "context",
+    terms: ["context"],
+    title: "Context",
+    meaning: "Context is the text the model can consider in the current request, including the prompt and the answer so far.",
+    why: "Longer context needs more working memory and can make prompt processing slower.",
+    example: "A chat that keeps 20,000 earlier tokens in its history has a larger context than a fresh question with 500 tokens."
+  },
+  {
+    id: "output-tokens",
+    terms: ["output tokens", "visible output"],
+    title: "Output tokens",
+    meaning: "Output tokens are the pieces of text the model generates for its answer.",
+    why: "Longer answers take longer to finish and keep using conversation memory while they are being generated.",
+    example: "If a reply contains 300 tokens and the stream runs at 10 tokens per second, generation takes about 30 seconds after it starts."
+  },
+  {
+    id: "prefill",
+    terms: ["effective_prefill_compute", "prompt processing", "prompt-reading time", "prefill"],
+    title: "Prefill (reading the prompt)",
+    meaning: "Prefill is the stage where the model processes the entire prompt before it begins writing its answer.",
+    why: "A long prompt can cause a noticeable wait before the first answer token appears, even if the answer will stream quickly afterward.",
+    example: "Before replying to a 10,000-token prompt, the model has to read and process those 10,000 tokens. This app shows an ideal compute-time floor, not a measured wait."
+  },
+  {
+    id: "decode",
+    terms: ["decoding", "decode"],
+    title: "Decode (writing the answer)",
+    meaning: "Decode is the repeated step of producing the next token of the answer, using the prompt and all tokens generated so far.",
+    why: "The rate of this stage determines how quickly text appears once the answer has started.",
+    example: "At 8 tokens per second, the model produces about 80 tokens in 10 seconds."
+  },
+  {
+    id: "throughput",
+    terms: ["throughput"],
+    title: "Throughput",
+    meaning: "Throughput is how much work the system completes in a period of time. For generation, it is usually reported as tokens per second.",
+    why: "With several people generating at once, total system throughput must be shared among their answer streams.",
+    example: "A total of 100 generated tokens per second shared evenly by 20 active people averages 5 tokens per second each."
+  },
+  {
+    id: "tokens-per-second",
+    terms: ["tokens per second", "token per second", "tok/s"],
+    title: "Tokens per second",
+    meaning: "Tokens per second, often shortened to tok/s, measures how quickly generated text appears.",
+    why: "The speed for one person can be much lower than the total tokens per second when many answers are being generated together. This view marks under 2 as very slow, 2 to under 5 as noticeably slow, 5 to under 10 as steady, 10 to under 20 as smooth, and 20 or more as very fluid; these are rough reading guides, not measured human thresholds.",
+    example: "If 60 tokens per second are shared evenly by 20 active streams, each gets about 3 tokens per second."
+  },
+  {
+    id: "concurrency",
+    terms: ["concurrent_requests", "concurrent requests", "simultaneous requests", "concurrency", "concurrent users"],
+    title: "Concurrency (people active at once)",
+    meaning: "Concurrency is the number of requests being served at the same time.",
+    why: "More simultaneous requests need more conversation memory and divide the model's generation capacity among more people.",
+    example: "A concurrency setting of 20 means the stress estimate assumes 20 requests are active together."
+  },
+  {
+    id: "latency",
+    terms: ["latency"],
+    title: "Latency (waiting time)",
+    meaning: "Latency is the time someone waits for an action to happen, such as the first answer token or the complete reply.",
+    why: "A fast total token rate does not guarantee a short wait: prompt reading and queueing can delay the start.",
+    example: "A model may start replying after one second, then stream the rest over another ten seconds."
+  },
+  {
+    id: "ttft",
+    terms: ["time to first token", "first visible token", "TTFT"],
+    title: "Time to first token (TTFT)",
+    meaning: "TTFT is the time from sending a request until the first answer token is shown.",
+    why: "It includes prompt reading and may also include waiting in a queue or hidden reasoning. The app's compute floor does not include all of those delays.",
+    example: "If a reply begins appearing 2 seconds after a person presses Send, its TTFT is 2 seconds."
+  },
+  {
+    id: "attention",
+    terms: ["causal attention", "attention"],
+    title: "Attention",
+    meaning: "Attention lets the model compare the current position with earlier text so it can use relevant context.",
+    why: "Long prompts create more attention work. Different model designs reduce or store that work in different ways.",
+    example: "When finishing “The capital of France is…”, attention lets the model use the earlier words in the sentence."
+  },
+  {
+    id: "kv-cache",
+    terms: ["KV cache", "KV memory", "KV"],
+    title: "Key-value cache (KV cache)",
+    meaning: "The KV cache is working memory that saves information from the prompt and answer so the model does not have to rebuild it for every new token.",
+    why: "Each active conversation uses some of this memory. Longer conversations and more simultaneous people need more of it.",
+    example: "If one conversation needs 2 GB of KV cache, 20 separate conversations need about 40 GB before overhead."
+  },
+  {
+    id: "gqa",
+    terms: ["grouped-query attention", "GQA"],
+    title: "Grouped-query attention (GQA)",
+    meaning: "GQA lets groups of query heads share a smaller set of key and value heads.",
+    why: "Fewer stored key and value heads can reduce the KV memory needed for each token.",
+    example: "If 32 query heads share 8 KV heads, the cache stores 8 key/value groups instead of 32."
+  },
+  {
+    id: "mla",
+    terms: ["multi-head latent attention", "MLA"],
+    title: "Multi-head latent attention (MLA)",
+    meaning: "MLA compresses attention information into a smaller shared representation, then reconstructs what is needed later.",
+    why: "Its cache layout can use less memory than storing every key and value separately. It is an attention design, separate from how many model parameters are active.",
+    example: "Instead of keeping a full key and value vector for every head, the model stores a smaller latent vector plus positional information."
+  },
+  {
+    id: "dsa",
+    terms: ["sparse attention", "DSA"],
+    title: "DeepSeek Sparse Attention (DSA)",
+    meaning: "Sparse attention first looks across the context, then focuses detailed attention on a smaller selected set of positions.",
+    why: "The selection can reduce some attention work, but the model still needs to score the context and may keep extra index information.",
+    example: "For a long conversation, the model might select the 1,000 most useful positions instead of attending closely to every position."
+  },
+  {
+    id: "moe",
+    terms: ["mixture of experts", "MoE"],
+    title: "Mixture of experts (MoE)",
+    meaning: "An MoE model contains several specialist parts called experts and routes each token through only some of them.",
+    why: "The system still stores all experts, but only the selected experts do the work for each token. Different people may select different experts, so batched speed is less certain.",
+    example: "A 100B MoE model might store 100B parameters but use 10B per token. It still needs room for all 100B weights."
+  },
+  {
+    id: "dense-model",
+    terms: ["dense model", "dense"],
+    title: "Dense model",
+    meaning: "A dense model uses its full set of parameters for each token it processes.",
+    why: "All parameters affect both stored model size and the work done per token.",
+    example: "A 14B dense model uses about 14B parameters for each generated token."
+  },
+  {
+    id: "sliding-window",
+    terms: ["sliding-window layers", "sliding window"],
+    title: "Sliding attention window",
+    meaning: "A sliding window lets some model layers keep only the most recent part of a conversation for attention.",
+    why: "Those layers can use less cache for long conversations, though other layers may still keep the full context.",
+    example: "With a 4,096-token window, a sliding-window layer keeps the latest 4,096 positions rather than every older position."
+  },
+  {
+    id: "indexer",
+    terms: ["indexer cache", "indexer"],
+    title: "Attention indexer",
+    meaning: "An indexer scores earlier positions to help sparse attention choose which parts of a long context to inspect closely.",
+    why: "The scoring itself takes work, and the indexer may keep its own small cache.",
+    example: "Think of it as making a shortlist of relevant pages before reading those pages in detail."
+  },
+  {
+    id: "top-k",
+    terms: ["top-k"],
+    title: "Top-k selection",
+    meaning: "Top-k means choosing the k highest-scoring items from a larger set.",
+    why: "Sparse attention uses this idea to choose a limited number of context positions for detailed attention.",
+    example: "If top-k is 1,000, the model selects up to 1,000 positions from the context."
+  },
+  {
+    id: "expert",
+    terms: ["experts", "expert"],
+    title: "Model expert",
+    meaning: "An expert is one specialist part inside a mixture-of-experts model.",
+    why: "The system routes each token to selected experts; overlapping selections between requests affect how much work can be shared.",
+    example: "One expert may specialize in code while another responds to a language question, though the model learns these roles rather than being hand-labeled."
+  },
+  {
+    id: "roofline",
+    terms: ["roofline"],
+    title: "Roofline (ideal speed ceiling)",
+    meaning: "A roofline estimate compares the main hardware limits and uses the slower limit as a theoretical maximum speed.",
+    why: "Real software, memory traffic, and scheduling add delays, so observed speed is usually below this ceiling.",
+    example: "If memory could support 50 tokens per second but compute could support only 40, the estimate uses 40."
+  },
+  {
+    id: "batch-decoding",
+    terms: ["packed-batch decoding", "packed_batch", "batch decoding", "packed batch", "packed-batch"],
+    title: "Batched decoding",
+    meaning: "Batched decoding advances several people's answers together so the GPU can serve multiple active requests in one step.",
+    why: "It can improve total output, but that total rate is shared across the active streams.",
+    example: "If a batch produces 100 tokens per second for 20 equally active requests, that averages 5 tokens per second per request."
+  },
+  {
+    id: "memory-fit",
+    terms: ["memory fit", "fits in memory"],
+    title: "Memory fit",
+    meaning: "A memory-fit check compares the estimated model and conversation memory with the GPU memory available.",
+    why: "A configuration that exceeds the memory budget cannot serve the modeled workload without changing the setup or assumptions.",
+    example: "If the model and 20 conversation caches need 150 GB, a 2-GPU setup with 80 GB each has 160 GB before real runtime details."
+  },
+  {
+    id: "safety-factor",
+    terms: ["memory safety factor", "safety factor", "planning margin"],
+    title: "Memory safety margin",
+    meaning: "The safety factor reserves extra GPU memory beyond the model weights and estimated conversation caches.",
+    why: "Serving software needs room for temporary work and allocation overhead that this first-order model does not measure directly.",
+    example: "A 1.25× factor plans for 125 GB when the raw estimate is 100 GB."
+  },
+  {
+    id: "sharding",
+    terms: ["sharding"],
+    title: "Sharding across GPUs",
+    meaning: "Sharding splits a model or its work across multiple GPUs.",
+    why: "It can let a model use the combined memory of several GPUs, but communication between them adds overhead.",
+    example: "A 120 GB model might be split across two 80 GB cards, with each holding about half of the weights."
+  },
+  {
+    id: "multi-gpu-scaling",
+    terms: ["multi-GPU scaling", "multi-GPU"],
+    title: "Multi-GPU scaling",
+    meaning: "Multi-GPU scaling describes how much faster a workload gets when additional GPUs work together.",
+    why: "The speedup is usually less than the number of GPUs because they need to coordinate and move data between them.",
+    example: "If two GPUs are set to 90% scaling, the calculator assumes they deliver 1.8 times one GPU's ideal capacity, not a full 2 times."
+  },
+  {
+    id: "efficiency",
+    terms: ["decode_efficiency", "prefill_efficiency", "multi_GPU_scaling", "efficiency"],
+    title: "Hardware efficiency assumption",
+    meaning: "An efficiency percentage is the share of a GPU's headline peak speed the calculator assumes the workload can use.",
+    why: "Real inference rarely reaches a spec-sheet peak continuously. These percentages are planning inputs, not measurements.",
+    example: "A 70% bandwidth efficiency assumption turns a 1 TB/s peak into 0.7 TB/s of estimated usable bandwidth."
+  },
+  {
+    id: "hidden-reasoning",
+    terms: ["hidden reasoning", "reasoning tokens"],
+    title: "Hidden reasoning tokens",
+    meaning: "Some models generate internal tokens before showing a final answer. These tokens may not be displayed to the person asking.",
+    why: "They still take time and memory. A prompt-processing estimate alone does not include time spent generating them.",
+    example: "If a model produces 200 internal tokens before its visible reply, those 200 tokens add generation time first."
+  },
+  {
+    id: "layers",
+    terms: ["transformer layers", "layers"],
+    title: "Transformer layers",
+    meaning: "Layers are repeated processing stages inside a transformer model. Each stage refines the information used to predict the next token.",
+    why: "More layers usually mean more model work and more stored conversation information, depending on the attention layout.",
+    example: "A model with 50 layers applies 50 processing stages to each token."
+  },
+  {
+    id: "query-heads",
+    terms: ["query_heads", "attention_heads", "query heads", "attention heads"],
+    title: "Attention heads",
+    meaning: "Attention heads are parallel ways a model can compare the current text with earlier text. A query head asks which earlier information is useful.",
+    why: "The head count and dimensions affect attention work. In GQA, several query heads may share fewer KV heads.",
+    example: "A model can have 32 query heads but only 8 key-value heads shared between them."
+  },
+  {
+    id: "kv-heads",
+    terms: ["KV_heads", "KV heads", "key/value heads"],
+    title: "Key-value heads",
+    meaning: "Key-value heads hold the attention information that later tokens look back at.",
+    why: "Their number is one of the main controls on how much KV cache each token needs in a GQA model.",
+    example: "Using 8 KV heads instead of 32 can reduce cache storage when the model's query heads share them."
+  },
+  {
+    id: "head-dimension",
+    terms: ["head_dim", "head dimension", "head dim", "key dim", "value head dim"],
+    title: "Head dimension",
+    meaning: "A head dimension is the number of values in each attention head's internal representation.",
+    why: "Larger dimensions mean more information to store in the cache and more attention math to perform.",
+    example: "A 128-value key and a 128-value value require more cache space than two 64-value vectors."
+  },
+  {
+    id: "sequence-length",
+    terms: ["sequence_length", "sequence length", "live sequence", "total sequence", "sequence"],
+    title: "Sequence length",
+    meaning: "Sequence length is the total number of tokens the model is currently keeping for a request: the prompt plus the answer so far.",
+    why: "Longer sequences use more working memory and can increase attention work.",
+    example: "A 7,000-token prompt and a 500-token answer create a sequence of about 7,500 tokens."
+  },
+  {
+    id: "queueing",
+    terms: ["scheduler admission", "admission policy", "queueing", "queue", "scheduler"],
+    title: "Queueing and scheduling",
+    meaning: "A serving system schedules incoming requests onto the GPUs. If the GPUs are busy, some requests wait their turn or are grouped into batches.",
+    why: "Waiting in line adds time before a response begins and can change how smoothly different people receive tokens.",
+    example: "If 30 people request answers while the server can actively process 20, some people may wait for an active slot."
+  },
+  {
+    id: "runtime-overhead",
+    terms: ["runtime overhead", "runtime reservations", "serving runtime", "runtime", "workspace"],
+    title: "Serving runtime overhead",
+    meaning: "The serving runtime is the software that loads the model and manages requests. It needs extra GPU memory and processing work around the model itself.",
+    why: "This calculator uses a planning margin for some of that overhead but does not model every runtime allocation or delay.",
+    example: "Temporary calculation buffers and cache bookkeeping take some memory in addition to the model weights."
+  },
+  {
+    id: "working-set",
+    terms: ["working set", "raw working set"],
+    title: "Working set",
+    meaning: "The working set is the memory occupied by the loaded model plus the active conversations' cached information.",
+    why: "It is the main memory demand before adding the safety margin and runtime reservations.",
+    example: "28 GB of model weights plus 20 GB of conversation caches makes a 48 GB raw working set."
+  },
+  {
+    id: "dtype",
+    terms: ["dtype"],
+    title: "Data type (dtype)",
+    meaning: "A data type specifies how a number is represented in memory, such as FP16, BF16, or FP8.",
+    why: "The data type affects memory use, the calculations a GPU can accelerate, and sometimes numerical quality.",
+    example: "FP16 stores each number in two bytes; FP8 stores it in one byte."
+  },
+  {
+    id: "latent-rank",
+    terms: ["KV_rank", "latent rank"],
+    title: "Latent rank",
+    meaning: "Latent rank is the size of the compressed attention representation that an MLA model keeps in its cache.",
+    why: "A smaller rank means fewer values to save for each token, which can reduce conversation memory.",
+    example: "A rank of 512 means the model stores a 512-value compressed vector for each relevant layer and token."
+  },
+  {
+    id: "rope",
+    terms: ["RoPE_dim", "RoPE"],
+    title: "Rotary position information (RoPE)",
+    meaning: "RoPE is a way of giving the model information about the order and distance of words in a sequence.",
+    why: "Some model layouts keep a small RoPE-related key component in the attention cache, so its size affects memory.",
+    example: "Position information helps the model distinguish “dog bites person” from “person bites dog.”"
+  },
+  {
+    id: "mtp",
+    terms: ["multi-token prediction", "MTP"],
+    title: "Multi-token prediction (MTP)",
+    meaning: "MTP is an optional model feature that predicts extra future tokens to help speed up answer generation.",
+    why: "It can add model work and memory needs, and this calculator does not include that extra work in its estimates.",
+    example: "A model may try to draft a few next tokens at once, then check them before showing the answer."
+  },
+  {
+    id: "prefix-caching",
+    terms: ["prefix caching", "shared prefix"],
+    title: "Prefix caching",
+    meaning: "Prefix caching lets requests reuse saved work when they begin with the same prompt text.",
+    why: "It can reduce repeated prompt processing and cache memory, but the amount saved depends on the traffic and serving software.",
+    example: "If 20 requests share the same long system instructions, the server may process and store that shared beginning once."
+  },
+  {
+    id: "chunked-prefill",
+    terms: ["chunked prefill"],
+    title: "Chunked prefill",
+    meaning: "Chunked prefill breaks a long prompt into smaller pieces and processes them over several steps.",
+    why: "This can help a server keep other people's answers moving while it reads a long prompt.",
+    example: "Instead of processing 20,000 prompt tokens all at once, the server may process them in several smaller batches."
+  },
+  {
+    id: "speculative-decoding",
+    terms: ["speculative decoding"],
+    title: "Speculative decoding",
+    meaning: "Speculative decoding uses a smaller or faster helper model to draft tokens that the main model can check in groups.",
+    why: "It may increase generation speed, but extra model work and acceptance rates determine the actual benefit.",
+    example: "A small model drafts five words, and the large model checks which of those it can safely keep."
+  },
+  {
+    id: "slo",
+    terms: ["service-level objective", "SLO"],
+    title: "Service-level objective (SLO)",
+    meaning: "An SLO is a target for how reliably or quickly a service should respond to people.",
+    why: "A memory-fit estimate or theoretical token rate does not show whether a system meets its response-time target under real traffic.",
+    example: "A team might set a target that 95 out of 100 requests show their first answer token within two seconds."
+  },
+  {
+    id: "rag",
+    terms: ["retrieval-augmented generation", "RAG"],
+    title: "Retrieval-augmented generation (RAG)",
+    meaning: "RAG looks up relevant information and includes it in the prompt before the model answers.",
+    why: "Retrieved passages make prompts longer, which increases prompt-reading work and conversation memory.",
+    example: "A support bot may search a help center and add three matching articles to the prompt before replying."
+  },
+  {
+    id: "routing",
+    terms: ["expert routing", "expert overlap", "routing", "routed"],
+    title: "Expert routing",
+    meaning: "Routing is the model's choice of which specialist parts, or experts, should process each token.",
+    why: "Different requests can choose different experts, which changes how much work a batch can share.",
+    example: "A code question and a translation question may be sent to different expert groups inside an MoE model."
+  },
+  {
+    id: "kernel",
+    terms: ["kernels", "kernel"],
+    title: "GPU kernel",
+    meaning: "A kernel is a small program that tells the GPU how to perform one part of the model's work.",
+    why: "The way kernels are written and combined affects how much of the GPU's theoretical speed a real model reaches.",
+    example: "One kernel may multiply two large blocks of numbers; another may apply an attention step."
+  },
+  {
+    id: "interconnect",
+    terms: ["interconnect", "GPU communication"],
+    title: "GPU interconnect",
+    meaning: "An interconnect is the link that lets GPUs send data to each other.",
+    why: "When a model is split across cards, they must exchange information. Slow communication can reduce the speed gained from extra GPUs.",
+    example: "If one GPU needs a result held on another GPU, it must send that result over their interconnect before continuing."
+  },
+  {
+    id: "allocator",
+    terms: ["allocator", "memory fragmentation"],
+    title: "GPU memory allocation",
+    meaning: "The serving software reserves and organizes blocks of GPU memory for model work and active requests.",
+    why: "Unused gaps between memory blocks can make a setup run out of usable space before the simple total-memory estimate is reached.",
+    example: "A card may have 5 GB free in total but lack one large enough continuous block for a 4 GB temporary buffer."
+  },
+  {
+    id: "cache-blocks",
+    terms: ["cache-page rounding", "cache pages", "cache blocks"],
+    title: "Cache blocks and rounding",
+    meaning: "Serving software often reserves conversation memory in fixed-size blocks instead of exact token-sized pieces.",
+    why: "Rounding requests up to whole blocks can use slightly more memory than a simple per-token estimate.",
+    example: "A request needing 10.2 blocks may have to reserve 11 full blocks."
+  },
+  {
+    id: "weight-reuse",
+    terms: ["weight reuse", "reuse model weights", "reuse weight reads"],
+    title: "Reusing model weights across requests",
+    meaning: "When requests are served together, the GPU may read a model's shared weights once and use them for several people's next tokens.",
+    why: "Good reuse can raise total output speed, but different model types and serving schedules affect how much reuse is possible.",
+    example: "One read of the model weights might help produce the next token for 20 active conversations instead of just one."
+  },
+  {
+    id: "batch-throughput",
+    terms: ["packed-batch throughput", "batch throughput", "packed-batch"],
+    title: "Packed-batch throughput",
+    meaning: "Packed-batch throughput is the total generation speed when the GPU processes several active requests together.",
+    why: "The total rate is divided among the active people, and its accuracy depends on how efficiently the server groups requests.",
+    example: "A batch producing 200 tokens per second across 20 people averages 10 tokens per second each."
+  },
+  {
+    id: "fp32",
+    terms: ["FP32"],
+    title: "FP32",
+    meaning: "FP32 is a 32-bit floating-point number format that uses four bytes per value.",
+    why: "It can provide more numerical precision than FP16, BF16, or FP8, but it uses more memory and may have different GPU speed.",
+    example: "A temporary buffer with one billion FP32 values takes about 4 GB."
+  },
+  {
+    id: "aggregate",
+    terms: ["aggregate", "aggregated"],
+    title: "Aggregate (combined total)",
+    meaning: "Aggregate means the combined amount from all selected GPUs or requests.",
+    why: "Adding capacities gives a useful first estimate, but it does not guarantee that every GPU can use the total equally well.",
+    example: "Four GPUs with 80 GB each have 320 GB aggregate memory before runtime details are considered."
+  },
+  {
+    id: "matrix-multiply",
+    terms: ["matrix compute", "matrix multiplication", "matrix multiply", "matmul"],
+    title: "Matrix multiplication",
+    meaning: "Matrix multiplication is a large set of repeated multiply-and-add calculations that forms much of a language model's work.",
+    why: "GPUs are designed to perform these calculations in parallel, especially when processing prompts or batches of requests.",
+    example: "The model combines a table of input values with a table of learned weights to produce the next set of values."
+  },
+  {
+    id: "memory-stall",
+    terms: ["memory stalls", "memory stall"],
+    title: "Memory stall",
+    meaning: "A memory stall is a pause while the GPU waits for data to arrive from memory.",
+    why: "If the model or cache data cannot be delivered quickly enough, the GPU's calculation units sit idle and answers slow down.",
+    example: "A chef waiting for ingredients cannot keep cooking, even if they are fast at chopping."
+  },
+  {
+    id: "preemption",
+    terms: ["preemption", "preempted"],
+    title: "Request preemption",
+    meaning: "Preemption means pausing one request so the server can make room to process another request.",
+    why: "It affects which person waits and whether a response continues smoothly under heavy load.",
+    example: "A server might pause a long answer briefly to admit a new request, then resume it later."
+  },
+  {
+    id: "replication",
+    terms: ["replication", "replicated"],
+    title: "Model replication",
+    meaning: "Replication means keeping a copy of some model data on more than one GPU.",
+    why: "Repeated copies use extra memory, so the total GPU memory can overstate how much is available for conversation caches.",
+    example: "If each of two GPUs keeps a 4 GB copy of a layer, that layer occupies 8 GB across the system."
+  },
+  {
+    id: "projection",
+    terms: ["projection", "decompression"],
+    title: "Projection and decompression work",
+    meaning: "Projection and decompression are calculations that transform model data into the form needed by an attention step.",
+    why: "Some first-order prompt estimates leave this work out, so actual prompt processing can take longer.",
+    example: "An MLA model may need to reconstruct a full attention representation from its smaller cached form before using it."
+  }
+];
+
+const glossaryAliases = glossaryTerms
+  .flatMap((entry) => entry.terms.map((term) => ({ term, id: entry.id })))
+  .sort((left, right) => right.term.length - left.term.length);
+
 const state = {
   mode: "sandbox",
   selectedSectionId: "constraints",
@@ -564,6 +1195,9 @@ const state = {
   advancedControlsOpen: false,
   sidebarOpen: false,
   sidebarWidth: 360,
+  glossaryOpenTerm: null,
+  glossaryTriggerTerm: null,
+  glossaryTriggerIndex: null,
   modelPresetId: "velvet-14b",
   hardwarePresetId: "a100-80",
   model: structuredClone(modelPresets[0]),
@@ -714,9 +1348,12 @@ const topicEnhancements = {
         { label: "Prompt", value: formatTokens(state.workload.promptTokens) },
         { label: "Peak compute", value: `${formatNumber(results.aggregatePeakComputeTFLOPS, 0)} TFLOPS` },
         { label: "Usable compute", value: `${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS` },
-        { label: "Prefill compute floor", value: formatDuration(results.ttftFloorSec) },
-        { label: "With hidden-token floor", value: formatDuration(results.answerStartFloorSec) }
+        { label: "One-prompt reading floor", value: formatLongDuration(results.ttftFloorSec) },
+        { label: "All prompts arrive together", value: formatLongDuration(results.simultaneousPrefillFloorSec) }
       ];
+      if (results.hiddenReasoningTokens > 0) {
+        stats.push({ label: "First visible answer floor", value: formatLongDuration(results.simultaneousAnswerStartFloorSec) });
+      }
       return stats;
     },
     walkthrough(results) {
@@ -740,9 +1377,11 @@ const topicEnhancements = {
           note: "The attention term uses configured layer/head dimensions; DSA adds a full-context indexer estimate. Projection, kernel, and memory effects are not included."
         },
         {
-          label: "Divide by usable compute and optionally add hidden tokens",
-          value: `${formatDuration(results.ttftFloorSec)} prompt floor; ${formatTokens(state.workload.hiddenReasoningTokens)} hidden tokens give ${formatDuration(results.answerStartFloorSec)} lower bound`,
-          note: "The hidden-token delay assumes single-stream decoding. Neither value estimates queueing or actual user-visible TTFT."
+          label: "Estimate prompt reading time for one request and a full arrival burst",
+          value: `${formatLongDuration(results.ttftFloorSec)} for one prompt; about ${formatLongDuration(results.simultaneousPrefillFloorSec)} for ${formatNumber(state.workload.concurrentUsers, 0)} matching prompts arriving together`,
+          note: state.workload.hiddenReasoningTokens > 0
+            ? `Including ${formatTokens(state.workload.hiddenReasoningTokens)} configured hidden reasoning tokens per request gives about ${formatLongDuration(results.simultaneousAnswerStartFloorSec)} before visible text in this synchronized stress case. Queueing and actual runtime behavior are not modeled.`
+            : "These are compute-time floors, not response-time promises. Queueing and serving overhead can make the wait longer."
         }
       ];
     }
@@ -935,6 +1574,15 @@ function calculateSizing(model, hardware, workload) {
     : Infinity;
   const batchDecodeThroughputLowTps = Math.max(0, Math.min(batchBandwidthBoundLowTps, decodeComputeBoundTps));
   const batchDecodeThroughputHighTps = Math.max(0, Math.min(batchBandwidthBoundHighTps, decodeComputeBoundTps));
+  const perUserDecodeConservativeTps = Number.isFinite(Math.min(decodeTps, batchDecodeThroughputLowTps))
+    ? Math.max(0, Math.min(decodeTps, batchDecodeThroughputLowTps) / concurrentUsers)
+    : 0;
+  const perUserDecodeLowTps = Number.isFinite(batchDecodeThroughputLowTps)
+    ? batchDecodeThroughputLowTps / concurrentUsers
+    : 0;
+  const perUserDecodeHighTps = Number.isFinite(batchDecodeThroughputHighTps)
+    ? batchDecodeThroughputHighTps / concurrentUsers
+    : 0;
   const queryKeyHeadDim = model.attentionType === "mla"
     ? (Number(model.mlaQkNopeDim) || 0) + (Number(model.mlaRopeDim) || 0)
     : (Number(model.headDim) || 0);
@@ -958,7 +1606,9 @@ function calculateSizing(model, hardware, workload) {
   const attentionPrefillFLOPs = sparseAttentionPrefillFLOPs + indexerPrefillFLOPs;
   const totalPrefillFLOPs = linearPrefillFLOPs + attentionPrefillFLOPs;
   const ttftFloorSec = effectivePrefillComputeFLOPS > 0 ? totalPrefillFLOPs / effectivePrefillComputeFLOPS : Infinity;
-  const answerStartFloorSec = ttftFloorSec + (decodeTps > 0 ? hiddenReasoningTokens / decodeTps : 0);
+  const simultaneousPrefillFloorSec = ttftFloorSec * concurrentUsers;
+  const simultaneousAnswerStartFloorSec =
+    simultaneousPrefillFloorSec + (perUserDecodeConservativeTps > 0 ? hiddenReasoningTokens / perUserDecodeConservativeTps : 0);
   const memoryBoundConcurrency = kvPerUserGB > 0
     ? Math.max(0, Math.floor(remainingKvBudgetGB / kvPerUserGB))
     : 0;
@@ -1003,12 +1653,16 @@ function calculateSizing(model, hardware, workload) {
     decodeTps,
     batchDecodeThroughputLowTps,
     batchDecodeThroughputHighTps,
+    perUserDecodeConservativeTps,
+    perUserDecodeLowTps,
+    perUserDecodeHighTps,
     linearPrefillFLOPs,
     indexerPrefillFLOPs,
     attentionPrefillFLOPs,
     totalPrefillFLOPs,
     ttftFloorSec,
-    answerStartFloorSec,
+    simultaneousPrefillFloorSec,
+    simultaneousAnswerStartFloorSec,
     memoryBoundConcurrency,
     memoryUtilization,
     rawWorkingSetGB,
@@ -1062,6 +1716,20 @@ function formatDuration(seconds) {
   return `${formatNumber(seconds, 2)} s`;
 }
 
+function formatLongDuration(seconds) {
+  if (!Number.isFinite(seconds)) return "—";
+  if (seconds < 60) return formatDuration(seconds);
+  const roundedSeconds = Math.round(seconds);
+  if (roundedSeconds < 3600) {
+    const minutes = Math.floor(roundedSeconds / 60);
+    const remainder = roundedSeconds % 60;
+    return remainder ? `${minutes} min ${remainder} sec` : `${minutes} min`;
+  }
+  const hours = Math.floor(roundedSeconds / 3600);
+  const minutes = Math.floor((roundedSeconds % 3600) / 60);
+  return minutes ? `${hours} hr ${minutes} min` : `${hours} hr`;
+}
+
 function formatPercent(value) {
   return `${formatNumber(value * 100, 0)}%`;
 }
@@ -1072,6 +1740,86 @@ function formatGB(value) {
 
 function formatTokens(value) {
   return new Intl.NumberFormat("en-US").format(Math.round(value));
+}
+
+function getStreamComfort(tokensPerSecond) {
+  if (!(tokensPerSecond > 0) || !Number.isFinite(tokensPerSecond)) {
+    return {
+      label: "No speed estimate",
+      className: "unavailable",
+      description: "Enter valid model and hardware values to estimate a generation pace."
+    };
+  }
+  if (tokensPerSecond >= 20) {
+    return {
+      label: "Very fluid",
+      className: "fluid",
+      description: "Text should appear quickly and continuously if the system reaches this estimate."
+    };
+  }
+  if (tokensPerSecond >= 10) {
+    return {
+      label: "Smooth",
+      className: "smooth",
+      description: "A steady pace for most chat replies if the system reaches this estimate."
+    };
+  }
+  if (tokensPerSecond >= 5) {
+    return {
+      label: "Steady, with pauses",
+      className: "steady",
+      description: "The answer remains readable, but people may notice it arriving word by word."
+    };
+  }
+  if (tokensPerSecond >= 2) {
+    return {
+      label: "Noticeably slow",
+      className: "slow",
+      description: "People are likely to see pauses between parts of the answer."
+    };
+  }
+  return {
+    label: "Very slow",
+    className: "very-slow",
+    description: "Text may arrive in short bursts with long pauses between them."
+  };
+}
+
+function renderFullConcurrencyEstimate(results) {
+  const users = Math.max(1, Math.floor(Number(state.workload.concurrentUsers) || 1));
+  const tokensPerSecond = results.perUserDecodeConservativeTps;
+  const comfort = getStreamComfort(tokensPerSecond);
+  const outputTokens = Math.max(0, Math.floor(Number(state.workload.outputTokens) || 0));
+  const completionTime = tokensPerSecond > 0 && outputTokens > 0
+    ? formatLongDuration(outputTokens / tokensPerSecond)
+    : null;
+  const paceText = tokensPerSecond > 0 ? formatNumber(tokensPerSecond, 1) : "—";
+  const packedRangeText = `${formatNumber(results.perUserDecodeLowTps, 1)}–${formatNumber(results.perUserDecodeHighTps, 1)} tokens/s per person`;
+
+  return `
+    <article class="comfort-card ${results.fitsInMemory ? "" : "memory-warning"}">
+      <div class="comfort-main">
+        <div class="section-kicker">How the stream may feel with everyone active</div>
+        <h3>${comfort.label}</h3>
+        <p>${comfort.description} ${tokensPerSecond > 0
+          ? `With all ${formatNumber(users, 0)} requests generating together, if the GPU cannot share model reads between people, each gets about <strong>${paceText} tokens per second</strong>.`
+          : "A per-person estimate is not available for these model and hardware values."}</p>
+        <p class="support-copy">If the server batches requests and reuses weights well, its ideal packed-batch range is ${packedRangeText}.</p>
+        ${completionTime
+          ? `<p class="support-copy">At that pace, a ${formatTokens(outputTokens)}-token answer takes about ${completionTime toLowerCase()} to generate after it starts. The model must read the prompt first.</p>`
+          : `<p class="support-copy">Set output tokens above zero to estimate how long the answer takes to generate after it starts.</p>`}
+        ${results.fitsInMemory
+          ? ""
+          : `<p class="comfort-warning">The model and ${formatNumber(users, 0)} conversation caches exceed the estimated GPU memory. Treat this speed as hypothetical until the configuration fits.</p>`}
+      </div>
+      <div class="comfort-stat">
+        <div class="metric-label">Conservative per-person pace</div>
+        <strong>${paceText} <span>tokens/s</span></strong>
+        <span class="comfort-badge ${comfort.className}">${comfort.label}</span>
+      </div>
+      <div class="comfort-footnote">Cautious case: all ${formatNumber(users, 0)} configured requests decode at once and the GPU gets no benefit from sharing model reads. The packed-batch figure assumes it can reuse model data between requests. Both are ideal hardware ceilings; real speed can be lower, and prompt reading or queueing adds to the wait before an answer starts. The feel label is a rough guide, not a user-study result.</div>
+    </article>
+  `;
 }
 
 function scrollToSection(sectionId) {
@@ -1226,7 +1974,7 @@ function renderSectionRail() {
 
 function renderHeroStrip(results) {
   const primarySummary =
-    "Estimate memory fit, decode rooflines, and a prompt-processing floor. Use your model config and serving benchmarks to replace the planning assumptions.";
+    "Check whether a model fits, how quickly answers may stream when everyone is active, and how long the model needs to read a prompt before replying. Replace planning assumptions with your serving measurements when you have them.";
 
   return `
     <section class="hero-strip">
@@ -1397,7 +2145,7 @@ function renderGuideVisual(sectionId, results) {
         </button>
         <button type="button" class="visual-button three-up" data-action="focus-topic" data-topic="ttft">
           <div class="section-kicker">Process</div>
-          <strong>${formatDuration(results.ttftFloorSec)}</strong>
+          <strong>${formatLongDuration(results.ttftFloorSec)}</strong>
           <div class="support-copy">Compute-led prefill floor from usable prefill compute.</div>
         </button>
       </div>
@@ -1561,13 +2309,13 @@ function renderGuideVisual(sectionId, results) {
       <div class="visual-grid">
         <button type="button" class="visual-button half" data-action="focus-topic" data-topic="ttft">
           <div class="section-kicker">Prompt processing floor</div>
-          <strong>${formatDuration(results.ttftFloorSec)}</strong>
+          <strong>${formatLongDuration(results.ttftFloorSec)}</strong>
           <div class="support-copy">Prompt tokens: ${formatTokens(state.workload.promptTokens)} • usable prefill compute: ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} TFLOPS</div>
         </button>
         <div class="visual-panel half">
           <div class="metric-label">Prompt work estimate</div>
           <div class="topic-stat" style="margin-top: 10px;">${formatCompact(results.totalPrefillFLOPs, 2)} FLOPs</div>
-          <div class="support-copy" style="margin-top: 8px;">Includes ${formatCompact(results.attentionPrefillFLOPs, 2)} attention FLOPs. Compute floor: ${formatDuration(results.ttftFloorSec)}; hidden-token floor: ${formatDuration(results.answerStartFloorSec)}.</div>
+        <div class="support-copy" style="margin-top: 8px;">Includes ${formatCompact(results.attentionPrefillFLOPs, 2)} attention FLOPs. One prompt has a ${formatLongDuration(results.ttftFloorSec)} compute floor; if all ${formatNumber(state.workload.concurrentUsers, 0)} prompts arrive together, their combined prompt-work floor is about ${formatLongDuration(results.simultaneousPrefillFloorSec)}.</div>
         </div>
       </div>
     `;
@@ -1646,12 +2394,12 @@ function renderSandboxView(results) {
     <section class="results-stack" aria-label="Sizing results">
       <div class="metric-grid">
         <article class="metric-card accent">
-          ${renderMetricHeader("Model weights", "weight-vram")}
+          ${renderMetricHeader("Model weights (memory to load the model)", "weight-vram")}
           <div class="metric-value">${formatGB(results.weightMemoryGB)}</div>
           <div class="metric-subtext">${formatNumber(state.model.totalParamsB, 1)}B total parameters × ${formatNumber(state.model.weightBytes, 2)} bytes.</div>
         </article>
         <article class="metric-card cyan">
-          ${renderMetricHeader("KV per request", "kv-cache")}
+          ${renderMetricHeader("KV cache per request (conversation memory)", "kv-cache")}
           <div class="metric-value">${formatGB(results.kvPerUserGB)}</div>
           <div class="metric-subtext">${formatTokens(results.totalSequenceTokens)} live tokens at the configured ${getArchitectureLabel(state.model)} layout${results.maxContextTokens > 0 ? ` · ${formatTokens(results.maxContextTokens)} token limit` : ""}.</div>
         </article>
@@ -1664,20 +2412,24 @@ function renderSandboxView(results) {
         <article class="metric-card accent">
           ${renderMetricHeader("Single-sequence decode roofline", "decode")}
           <div class="metric-value">${formatNumber(results.decodeTps, 1)} tok/s</div>
+          <div class="metric-subtext">Plain language: the ideal speed ceiling for one answer stream.</div>
           <div class="metric-subtext">min(${formatNumber(results.decodeBandwidthBoundTps, 1)} HBM-bound, ${formatNumber(results.decodeComputeBoundTps, 1)} compute-bound).</div>
-          <div class="metric-subtext">Theoretical ceiling before attention, queueing, and runtime overhead.</div>
+          <div class="metric-subtext">Ideal speed ceiling; a real server can be slower.</div>
         </article>
         <article class="metric-card cyan">
           ${renderMetricHeader("Packed-batch decode bound", "decode")}
           <div class="metric-value">${formatNumber(results.batchDecodeThroughputLowTps, 1)}–${formatNumber(results.batchDecodeThroughputHighTps, 1)} tok/s</div>
-          <div class="metric-subtext">Aggregate ceiling for ${formatNumber(state.workload.concurrentUsers, 0)} simultaneous decode sequences.</div>
-          <div class="metric-subtext">MoE range reflects unknown expert reuse; actual scheduling can lower throughput.</div>
+          <div class="metric-subtext">Plain language: combined speed when ${formatNumber(state.workload.concurrentUsers, 0)} answer streams run together.</div>
+          <div class="metric-subtext">This ideal estimate allows requests to reuse model weight reads; real service can be slower.</div>
         </article>
         <article class="metric-card">
-          ${renderMetricHeader("Prompt compute floor", "ttft")}
-          <div class="metric-value">${formatDuration(results.ttftFloorSec)}</div>
+          ${renderMetricHeader("Prompt compute floor (prefill / prompt reading)", "ttft")}
+          <div class="metric-value">${formatLongDuration(results.ttftFloorSec)}</div>
+          <div class="metric-subtext">For one person, the model must read all ${formatTokens(state.workload.promptTokens)} prompt tokens before it starts writing.</div>
           <div class="metric-subtext">From ${formatCompact(results.totalPrefillFLOPs, 2)} FLOPs and ${formatNumber(results.effectivePrefillComputeTFLOPS, 0)} usable TFLOPS.</div>
-          <div class="metric-subtext">Lower bound; not predicted TTFT.</div>
+          <div class="metric-subtext">If all ${formatNumber(state.workload.concurrentUsers, 0)} prompts arrive together, their combined prompt-processing floor is about ${formatLongDuration(results.simultaneousPrefillFloorSec)}.</div>
+          <div class="metric-subtext">These are ideal compute floors; queueing and serving overhead can make the wait longer.</div>
+          ${results.hiddenReasoningTokens > 0 ? `<div class="metric-subtext">Including the configured hidden reasoning, the synchronized first-visible-answer floor is ${formatLongDuration(results.simultaneousAnswerStartFloorSec)}.</div>` : ""}
         </article>
       </div>
       <article class="guide-card">
@@ -1800,6 +2552,7 @@ function renderSidebar(results) {
         <button type="button" class="sidebar-close" data-action="close-sidebar" aria-label="Close sidebar">×</button>
       </div>
       <div class="support-copy">${topic.summary}</div>
+      <div class="info-glossary-hint" role="note">Dotted terms in this Info panel open a plain-language explanation and example.</div>
       <div class="topic-stat-row">
         <div class="topic-stat-card">
           <div class="metric-label">${topic.statALabel}</div>
@@ -1858,7 +2611,7 @@ function renderAttentionNote() {
     <div class="attention-note" role="note" aria-label="Sizing assumptions">
       <div class="attention-label">Planning limits</div>
       <div class="attention-copy">
-        Use output rates as planning ceilings and memory fit as a first-order check. Fit assumes even sharding. Runtime reservations, cache-page rounding, shared prefixes, MoE interconnect, scheduler effects, and optional MTP compute are omitted; DSA indexer FLOPs are approximate and runtime-specific index-cache sharing is not modeled. Replace editable values with exact checkpoint and runtime measurements before deployment sizing.
+        These are planning estimates, not promises about live performance. A memory fit is only a first check; serving software, waiting requests, shared prompts, and model-specific costs can change the result. For deployment sizing, use the exact model setup and a benchmark with the traffic you expect.
       </div>
       <details class="source-details">
         <summary>Model, runtime, and hardware sources</summary>
@@ -1875,6 +2628,119 @@ function renderAttentionNote() {
       </details>
     </div>
   `;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function decorateGlossaryTerms() {
+  const infoPanel = app.querySelector(".sidebar");
+  if (!infoPanel) return;
+
+  const walker = document.createTreeWalker(infoPanel, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (
+        !parent ||
+        parent.closest("button, a, option, select, input, textarea, script, style, .glossary-dialog, [data-no-glossary]")
+      ) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+  const indexByTerm = new Map();
+  textNodes.forEach((node) => {
+    const text = node.nodeValue;
+    const matches = [];
+    glossaryAliases.forEach(({ term, id }) => {
+      const pattern = new RegExp(`(^|[^a-z0-9])(${escapeRegExp(term).replace(/\s+/g, "\\s+")})(?=$|[^a-z0-9])`, "gi");
+      let match;
+      while ((match = pattern.exec(text))) {
+        const start = match.index + match[1].length;
+        matches.push({ start, end: start + match[2].length, id, text: match[2] });
+      }
+    });
+    if (!matches.length) return;
+
+    matches.sort((left, right) => left.start - right.start || right.end - left.end);
+    const selected = [];
+    let cursor = 0;
+    matches.forEach((match) => {
+      if (match.start < cursor) return;
+      selected.push(match);
+      cursor = match.end;
+    });
+    if (!selected.length) return;
+
+    const fragment = document.createDocumentFragment();
+    cursor = 0;
+    selected.forEach((match) => {
+      fragment.append(document.createTextNode(text.slice(cursor, match.start)));
+      const index = indexByTerm.get(match.id) || 0;
+      indexByTerm.set(match.id, index + 1);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "glossary-link";
+      button.dataset.action = "open-glossary-term";
+      button.dataset.term = match.id;
+      button.dataset.glossaryTerm = match.id;
+      button.dataset.glossaryIndex = String(index);
+      button.setAttribute("aria-haspopup", "dialog");
+      button.setAttribute("aria-label", `${match.text}: open plain-language explanation`);
+      button.textContent = match.text;
+      fragment.append(button);
+      cursor = match.end;
+    });
+    fragment.append(document.createTextNode(text.slice(cursor)));
+    node.parentNode.replaceChild(fragment, node);
+  });
+}
+
+function renderGlossaryModal() {
+  const entry = glossaryTerms.find((term) => term.id === state.glossaryOpenTerm);
+  if (!entry) return "";
+  return `
+    <dialog class="glossary-dialog" aria-modal="true" aria-labelledby="glossary-title">
+      <div class="glossary-dialog-inner">
+        <div class="glossary-dialog-header">
+          <div class="section-kicker">Plain-language sizing guide</div>
+          <button type="button" class="sidebar-close glossary-close" data-action="close-glossary" aria-label="Close explanation">×</button>
+        </div>
+        <h2 id="glossary-title">${entry.title}</h2>
+        <section class="glossary-explanation">
+          <h3>In simple terms</h3>
+          <p>${entry.meaning}</p>
+        </section>
+        <section class="glossary-explanation">
+          <h3>Why it matters here</h3>
+          <p>${entry.why}</p>
+        </section>
+        <section class="glossary-explanation glossary-example">
+          <h3>Example</h3>
+          <p>${entry.example}</p>
+        </section>
+        <p class="glossary-hint">Select any dotted term in this Info panel to learn about it.</p>
+      </div>
+    </dialog>
+  `;
+}
+
+function closeGlossaryDialog() {
+  const termId = state.glossaryTriggerTerm;
+  const termIndex = state.glossaryTriggerIndex;
+  state.glossaryOpenTerm = null;
+  state.glossaryTriggerTerm = null;
+  state.glossaryTriggerIndex = null;
+  renderApp();
+  const trigger = Array.from(app.querySelectorAll(".glossary-link")).find(
+    (button) => button.dataset.glossaryTerm === termId && button.dataset.glossaryIndex === String(termIndex)
+  );
+  trigger?.focus();
 }
 
 function renderMain(results) {
@@ -1894,22 +2760,49 @@ function renderApp() {
           ${renderAttentionNote()}
           ${renderContextLimitNote(results)}
           ${renderControlDeck(results)}
+          ${renderFullConcurrencyEstimate(results)}
           ${renderMain(results)}
         </main>
         ${state.sidebarOpen ? renderSidebar(results) : ""}
       </div>
       <div class="developed-by">Developed by Matteo Paliani</div>
     </div>
+    ${renderGlossaryModal()}
   `;
+
+  decorateGlossaryTerms();
+  const glossaryDialog = app.querySelector(".glossary-dialog");
+  if (glossaryDialog) {
+    glossaryDialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      closeGlossaryDialog();
+    }, { once: true });
+    glossaryDialog.showModal();
+    glossaryDialog.querySelector(".glossary-close")?.focus();
+  }
 }
 
 document.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]");
   if (!target) {
+    if (event.target.matches(".glossary-dialog")) closeGlossaryDialog();
     return;
   }
 
   const action = target.dataset.action;
+
+  if (action === "open-glossary-term") {
+    state.glossaryOpenTerm = target.dataset.term;
+    state.glossaryTriggerTerm = target.dataset.glossaryTerm;
+    state.glossaryTriggerIndex = target.dataset.glossaryIndex;
+    renderApp();
+    return;
+  }
+
+  if (action === "close-glossary") {
+    closeGlossaryDialog();
+    return;
+  }
 
   if (action === "set-mode") {
     state.mode = target.dataset.mode;
@@ -2015,6 +2908,9 @@ document.addEventListener("change", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && state.glossaryOpenTerm) {
+    return;
+  }
   if (event.key === "Escape" && state.sidebarOpen) {
     state.sidebarOpen = false;
     renderApp();
