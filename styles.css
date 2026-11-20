@@ -905,6 +905,11 @@ div {
   line-height: 1.02;
 }
 
+.sidebar-summary {
+  display: grid;
+  gap: 8px;
+}
+
 .sidebar-block {
   display: grid;
   gap: 10px;
@@ -1002,6 +1007,12 @@ div {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar .topic-stat-card .topic-stat {
+  font-size: clamp(15px, 1.3vw, 20px);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .support-copy {
@@ -1340,7 +1351,7 @@ div {
 }
 
 .info-glossary-hint {
-  margin-top: -8px;
+  margin: 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.45;

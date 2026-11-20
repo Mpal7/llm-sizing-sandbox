@@ -1806,7 +1806,7 @@ function renderFullConcurrencyEstimate(results) {
           : "A per-person estimate is not available for these model and hardware values."}</p>
         <p class="support-copy">If the server batches requests and reuses weights well, its ideal packed-batch range is ${packedRangeText}.</p>
         ${completionTime
-          ? `<p class="support-copy">At that pace, a ${formatTokens(outputTokens)}-token answer takes about ${completionTime toLowerCase()} to generate after it starts. The model must read the prompt first.</p>`
+          ? `<p class="support-copy">At that pace, a ${formatTokens(outputTokens)}-token answer takes about ${completionTime} to generate after it starts. The model must read the prompt first.</p>`
           : `<p class="support-copy">Set output tokens above zero to estimate how long the answer takes to generate after it starts.</p>`}
         ${results.fitsInMemory
           ? ""
@@ -2551,8 +2551,10 @@ function renderSidebar(results) {
         </div>
         <button type="button" class="sidebar-close" data-action="close-sidebar" aria-label="Close sidebar">×</button>
       </div>
-      <div class="support-copy">${topic.summary}</div>
-      <div class="info-glossary-hint" role="note">Dotted terms in this Info panel open a plain-language explanation and example.</div>
+      <div class="sidebar-summary">
+        <div class="support-copy">${topic.summary}</div>
+        <div class="info-glossary-hint" role="note">Dotted terms in this Info panel open a plain-language explanation and example.</div>
+      </div>
       <div class="topic-stat-row">
         <div class="topic-stat-card">
           <div class="metric-label">${topic.statALabel}</div>
