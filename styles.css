@@ -363,7 +363,7 @@ div {
 
 .comfort-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(210px, 270px);
+  grid-template-columns: minmax(0, 1fr) repeat(2, minmax(180px, 230px));
   gap: 18px 28px;
   align-items: center;
   padding: 22px;
@@ -425,9 +425,9 @@ div {
   line-height: 1;
 }
 
-.comfort-stat > strong span {
+.comfort-stat-unit {
+  margin-top: -4px;
   font-size: 15px;
-  font-weight: 500;
   color: var(--muted);
 }
 

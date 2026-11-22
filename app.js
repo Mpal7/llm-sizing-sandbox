@@ -18,11 +18,123 @@ const modelPresets = [
     indexerHeads: 0,
     indexerHeadDim: 0,
     indexerCacheBytes: 0,
-    maxContextTokens: 0,
+    maxContextTokens: 131072,
     slidingWindowLayers: 0,
     slidingWindowTokens: 4096,
     weightBytes: 2,
-    kvBytes: 2
+    kvBytes: 2,
+    modelCardUrl: "https://huggingface.co/AlmawaveLabs/Velvet-14B",
+    presetNote: "Published Almawave checkpoint; the model card supports up to 128K context."
+  },
+  {
+    id: "velvet-2b",
+    name: "Velvet 2B",
+    parameterization: "dense",
+    totalParamsB: 2,
+    activeParamsB: 2,
+    layers: 28,
+    attentionHeads: 32,
+    attentionType: "gqa",
+    kvHeads: 8,
+    headDim: 64,
+    mlaKvRank: 512,
+    mlaRopeDim: 64,
+    mlaQkNopeDim: 128,
+    mlaValueHeadDim: 128,
+    sparseAttentionTopK: 0,
+    indexerHeads: 0,
+    indexerHeadDim: 0,
+    indexerCacheBytes: 0,
+    maxContextTokens: 32768,
+    slidingWindowLayers: 0,
+    slidingWindowTokens: 4096,
+    weightBytes: 2,
+    kvBytes: 2,
+    modelCardUrl: "https://huggingface.co/AlmawaveLabs/Velvet-2B",
+    presetNote: "The card lists 32 query heads and 8 KV heads, but not head width; this estimate assumes 64 dimensions per head."
+  },
+  {
+    id: "velvet2-3b",
+    name: "Velvet2 3B",
+    parameterization: "dense",
+    totalParamsB: 3,
+    activeParamsB: 3,
+    layers: 38,
+    attentionHeads: 40,
+    attentionType: "gqa",
+    kvHeads: 10,
+    headDim: 64,
+    mlaKvRank: 512,
+    mlaRopeDim: 64,
+    mlaQkNopeDim: 128,
+    mlaValueHeadDim: 128,
+    sparseAttentionTopK: 0,
+    indexerHeads: 0,
+    indexerHeadDim: 0,
+    indexerCacheBytes: 0,
+    maxContextTokens: 32768,
+    slidingWindowLayers: 0,
+    slidingWindowTokens: 4096,
+    weightBytes: 2,
+    kvBytes: 2,
+    modelCardUrl: "https://huggingface.co/AlmawaveLabs/Velvet2-3B",
+    presetNote: "Uses the 32K native context. The card describes a 128K YaRN extension, which this calculator does not enable."
+  },
+  {
+    id: "velvet2-3b-speech",
+    name: "Velvet2 3B Speech",
+    parameterization: "dense",
+    totalParamsB: 3.7,
+    activeParamsB: 3,
+    decoderParamsB: 3,
+    layers: 38,
+    attentionHeads: 40,
+    attentionType: "gqa",
+    kvHeads: 10,
+    headDim: 64,
+    mlaKvRank: 512,
+    mlaRopeDim: 64,
+    mlaQkNopeDim: 128,
+    mlaValueHeadDim: 128,
+    sparseAttentionTopK: 0,
+    indexerHeads: 0,
+    indexerHeadDim: 0,
+    indexerCacheBytes: 0,
+    maxContextTokens: 32768,
+    slidingWindowLayers: 0,
+    slidingWindowTokens: 4096,
+    weightBytes: 2,
+    kvBytes: 2,
+    modelCardUrl: "https://huggingface.co/AlmawaveLabs/Velvet2-3B-Speech",
+    presetNote: "Memory uses the published rounded 3.7B total. Speed and prompt time cover the 3B text decoder; audio encoding and audio-specific adapter work are not modeled."
+  },
+  {
+    id: "velvet2-3b-vision",
+    name: "Velvet2 3B Vision",
+    parameterization: "dense",
+    totalParamsB: 3.44769,
+    activeParamsB: 3,
+    decoderParamsB: 3,
+    layers: 38,
+    attentionHeads: 40,
+    attentionType: "gqa",
+    kvHeads: 10,
+    headDim: 64,
+    mlaKvRank: 512,
+    mlaRopeDim: 64,
+    mlaQkNopeDim: 128,
+    mlaValueHeadDim: 128,
+    sparseAttentionTopK: 0,
+    indexerHeads: 0,
+    indexerHeadDim: 0,
+    indexerCacheBytes: 0,
+    maxContextTokens: 32768,
+    slidingWindowLayers: 0,
+    slidingWindowTokens: 4096,
+    weightBytes: 2,
+    kvBytes: 2,
+    modelCardUrl: "https://huggingface.co/AlmawaveLabs/Velvet2-3B-Vision",
+    presetNote: "Resident weights include the 3B decoder, vision encoder, and projector. Speed and prompt time cover the text decoder; image encoding work is not modeled."
   },
   {
     id: "dense-70b",
@@ -229,8 +341,9 @@ const guideSections = [
     title: "Architecture class",
     summary: "Parameter routing and attention-cache layout are separate design choices, and modern models can combine them.",
     bullets: [
-      "Dense or MoE determines how many parameters are active per token.",
+      "Dense or MoE determines how many decoder parameters are active per generated text token.",
       "GQA or MLA determines the main attention KV state held per token.",
+      "Audio and vision models also keep input encoders resident; their input work is separate from text decoding.",
       "DeepSeek V3.2 adds a sparse-attention indexer and its own cache."
     ],
     topicId: "architecture"
@@ -273,8 +386,8 @@ const guideSections = [
     title: "Decode throughput",
     summary: "Per-token generation is usually a bandwidth problem, which is why usable HBM matters more than raw peak compute.",
     bullets: [
-      "Dense decode is tied to total parameter reads.",
-      "MoE and MLA decode can feel faster because active parameters are smaller.",
+      "Dense text decode reads the text decoder weights; multimodal encoder weights are used on input.",
+      "MoE reduces the active parameter count; GQA and MLA can reduce KV-cache traffic.",
       "Peak bandwidth is discounted by a decode-efficiency assumption before the app uses it."
     ],
     topicId: "decode"
@@ -284,7 +397,7 @@ const guideSections = [
     title: "Prefill and TTFT",
     summary: "Prompt processing has a compute floor plus attention work that grows with prompt length.",
     bullets: [
-      "Use total parameters for dense prefill.",
+      "Use text-decoder parameters for the text prefill estimate; audio/image encoder work is not included.",
       "Use active parameters for MoE; MLA alone does not imply sparse parameter activation.",
       "The floor includes an approximate causal-attention FLOP estimate."
     ],
@@ -350,8 +463,8 @@ const sidebarTopics = {
     eyebrow: "Decision point",
     summary: "Parameter routing and attention/cache layout are independent design choices.",
     detail:
-      "Dense models activate all parameters. MoE models store all parameters but activate a configured subset per token. GQA reduces KV heads; MLA stores a latent KV vector plus positional key dimensions. DeepSeek V3.2 combines MoE and MLA with DSA, which selects top-k context positions using a separate indexer cache. Its preset's 37B active count is an estimate carried forward from the V3 report; change it if you have a better measured or published count.",
-    formula: "Weights = P_total × bytes/weight\nGQA KV/token/layer = 2 × KV_heads × head_dim × bytes\nMLA KV/token/layer = (KV_rank + RoPE_dim) × bytes + optional indexer cache",
+      "A dense text decoder uses all of its decoder weights for each generated token. MoE models store all experts but activate a configured subset per token. Audio and vision checkpoints also keep their encoders and projectors in memory; those components process the incoming media, so they do not get counted as decoder weights for every generated text token. GQA reduces KV heads; MLA stores a latent KV vector plus positional key dimensions. DeepSeek V3.2 combines MoE and MLA with DSA, which selects top-k context positions using a separate indexer cache. Its preset's 37B active count is an estimate carried forward from the V3 report; change it if you have a better measured or published count.",
+    formula: "Weights = P_total × bytes/weight\nMultimodal stored weights = decoder + encoder + projector\nGQA KV/token/layer = 2 × KV_heads × head_dim × bytes\nMLA KV/token/layer = (KV_rank + RoPE_dim) × bytes + optional indexer cache",
     assumptions: [
       "Preset labels are editable and intended as planning seeds.",
       "Use exact config values when finalizing a deployment."
@@ -371,7 +484,7 @@ const sidebarTopics = {
     eyebrow: "Base load",
     summary: "Weight memory is the cost of simply loading the model. It is necessary but incomplete.",
     detail:
-      "Weight memory is computed from total parameters and bytes per weight. This gives a raw resident size, not the final production footprint. Real deployments also need runtime workspace, allocator slack, and communication buffers if the model is split across devices.",
+      "Weight memory is computed from all resident parameters and bytes per weight. For a multimodal checkpoint, that includes the decoder plus its audio or vision encoder and projector. This gives a raw resident size, not the final production footprint. Real deployments also need runtime workspace, allocator slack, and communication buffers if the model is split across devices.",
     formula: "VRAM_weights = P_total × bytes_per_weight",
     assumptions: [
       "Total parameters always drive storage.",
@@ -429,20 +542,21 @@ const sidebarTopics = {
     statBLabel: "Replace with measurements"
   },
   decode: {
-    title: "Decode roofline",
+    title: "Decode speed",
     eyebrow: "Tokens per second",
-    summary: "The estimate compares memory-bandwidth and compute ceilings for a single sequence and packed batch.",
+    summary: "The estimate compares memory-bandwidth and compute ceilings for one stream and for a packed batch.",
     detail:
-      "The single-sequence roofline is the smaller of the active-weight HBM bound and the matrix-compute bound. Packed-batch throughput is shown as a theoretical range: dense models reuse one weight set across the batch, while MoE traffic depends on how many distinct experts are routed. Attention reads, scheduler gaps, communication, and kernel effects still need measurement.",
-    formula: "Single-stream TPS ≤ min(HBM bytes/s ÷ active weight bytes, compute FLOPs/s ÷ (2 × P_active))\nPacked-batch TPS depends on weight reuse, routing, and scheduling.",
+      "The single-stream estimate is the smaller of the memory-bandwidth limit and the compute limit. Its bandwidth estimate includes active text-decoder weight reads plus an estimate of KV-cache reads at the configured context length. Packed-batch throughput assumes all selected requests decode together and share decoder-weight reads. Audio and vision encoder weights count toward resident memory, but their input-processing work is not part of this text-generation speed estimate. MoE traffic depends on how many different experts the requests need. Scheduling, communication, and kernel effects still need measurement.",
+    formula: "Single-stream TPS ≤ min(usable bandwidth ÷ (weight bytes + KV bytes per token), usable compute ÷ FLOPs per token)\nPacked-batch total TPS also accounts for shared weight reads and per-request KV reads.",
     assumptions: [
-      "Decode uses active parameters and a selected hardware efficiency assumption.",
+      "Decode uses active decoder parameters and a selected hardware efficiency assumption.",
+      "KV reads use the configured full sequence length as a cautious end-of-answer context.",
       "MoE batch traffic is a range because expert overlap is unknown.",
-      "The batch bound assumes all selected requests decode together."
+      "The batch bound assumes all selected requests decode together and share model-weight reads."
     ],
     pitfalls: [
       "Treating the estimate as measured production TPS.",
-      "Reading the roofline as measured production tokens per second."
+      "Assuming a packed-batch ceiling is guaranteed by a serving system."
     ],
     statA: "Usable bandwidth",
     statALabel: "Primary decode driver",
@@ -454,10 +568,10 @@ const sidebarTopics = {
     eyebrow: "First visible token",
     summary: "The prompt floor counts model work and causal attention, then divides by assumed usable compute.",
     detail:
-      "This estimate counts two FLOPs per active parameter per prompt token plus approximate causal-attention work, then divides by discounted peak compute. For DSA it estimates top-k attention pairs and full-context indexer scoring. It remains a compute floor: projection details, routing, queueing, chunked prefill, memory stalls, launch overhead, and kernel efficiency can make real TTFT much longer. Hidden reasoning may delay the first visible answer token depending on the model and server.",
-    formula: "Prefill FLOPs ≈ 2 × P_active × prompt + attention/indexer FLOPs\nCompute floor = prefill FLOPs ÷ usable compute",
+      "This estimate counts two FLOPs per active text-decoder parameter per prompt token plus approximate causal-attention work, then divides by discounted peak compute. Audio and image encoders add input-processing work that is not modeled; image prompts also expand into visual tokens that should be included in the prompt count. For DSA it estimates top-k attention pairs and full-context indexer scoring. It remains a compute floor: projection details, routing, queueing, chunked prefill, memory stalls, launch overhead, and kernel efficiency can make real TTFT much longer. Hidden reasoning may delay the first visible answer token depending on the model and server.",
+    formula: "Prefill FLOPs ≈ 2 × active decoder parameters × prompt + attention/indexer FLOPs\nCompute floor = prefill FLOPs ÷ usable compute",
     assumptions: [
-      "Dense uses total parameters; MoE uses configured active parameters.",
+      "Dense uses text-decoder parameters; MoE uses configured active parameters.",
       "The attention term uses configured dimensions; DSA adds an approximate indexer scoring term.",
       "The hidden-token delay is a single-stream lower bound, not a latency prediction."
     ],
@@ -492,17 +606,17 @@ const sidebarTopics = {
   },
   "worked-example": {
     title: "Velvet 14B example",
-    eyebrow: "Illustrative scenario",
-    summary: "A small editable example for seeing how the inputs move memory and throughput bounds.",
+    eyebrow: "Editable scenario",
+    summary: "An editable example built around the published Velvet 14B checkpoint.",
     detail:
-      "The starting example uses Velvet 14B on an A100 80GB with an 8k total sequence and a 1.25× safety factor. Velvet is an illustrative model config; replace its values with the checkpoint and runtime you plan to serve.",
-    formula: "Illustrative defaults; all model, hardware, and workload fields are editable.",
+      "The starting example uses the published Velvet 14B shape on an A100 80GB with an 8k total sequence and a 1.25× safety factor. Hardware efficiency values are planning assumptions, not measured Velvet serving results.",
+    formula: "Published model shape + editable hardware and workload assumptions.",
     assumptions: [
       "The example starts from a dense 14B model at BF16.",
       "Peak hardware fields and efficiency fields can both be edited."
     ],
     pitfalls: [
-      "Treating the illustrative model name as a published checkpoint.",
+      "Treating the efficiency values as measured performance for a particular runtime.",
       "Comparing scenarios without holding the hardware-efficiency assumptions constant."
     ],
     statA: "8k",
@@ -634,16 +748,16 @@ const glossaryTerms = [
     terms: ["parameters", "parameter", "params", "P_total", "total_params"],
     title: "Model parameters",
     meaning: "Parameters are the learned numerical values that make up a model. They hold patterns learned during training.",
-    why: "All stored parameters take memory. The parameters used for each token also determine much of the processing work.",
-    example: "A 14B model has roughly 14 billion parameters. At two bytes each, its raw weights take about 28 GB."
+    why: "All stored parameters take memory. The decoder parameters used for each generated token determine much of the repeated processing work; an audio or vision encoder is mainly used when processing the input.",
+    example: "A vision model might store 3.45B parameters in total but use a 3B text decoder for generated tokens. At two bytes each, all stored weights take about 6.9 GB before runtime memory."
   },
   {
     id: "active-parameters",
     terms: ["active parameters", "active params", "P_active", "active_parameters"],
     title: "Active parameters",
     meaning: "Active parameters are the model values actually used to process a particular token.",
-    why: "A routed model may store many parameters but use only a smaller part for each token, which can reduce calculation and weight-reading work.",
-    example: "A model might store 100B parameters but activate 10B for each token. It still needs memory for all 100B."
+    why: "A routed model may store many parameters but use only a smaller part for each token. A multimodal model can also keep its input encoder weights in memory without reading those weights again for every generated text token.",
+    example: "An image model might store about 3.45B parameters: a 3B text decoder plus its vision encoder and projector. It still needs memory for all the weights, while text-token work mainly follows the 3B decoder."
   },
   {
     id: "weights",
@@ -1114,7 +1228,7 @@ const glossaryTerms = [
     terms: ["weight reuse", "reuse model weights", "reuse weight reads"],
     title: "Reusing model weights across requests",
     meaning: "When requests are served together, the GPU may read a model's shared weights once and use them for several people's next tokens.",
-    why: "Good reuse can raise total output speed, but different model types and serving schedules affect how much reuse is possible.",
+    why: "Good reuse can raise total output speed, but it does not remove the bandwidth needed to read each person's KV cache. Model type and serving schedules affect how much reuse is possible.",
     example: "One read of the model weights might help produce the next token for 20 active conversations instead of just one."
   },
   {
@@ -1122,7 +1236,7 @@ const glossaryTerms = [
     terms: ["packed-batch throughput", "batch throughput", "packed-batch"],
     title: "Packed-batch throughput",
     meaning: "Packed-batch throughput is the total generation speed when the GPU processes several active requests together.",
-    why: "The total rate is divided among the active people, and its accuracy depends on how efficiently the server groups requests.",
+    why: "The total rate is divided among the active people. Sharing model-weight reads helps, while each conversation's KV-cache reads and the server's scheduling still use bandwidth.",
     example: "A batch producing 200 tokens per second across 20 people averages 10 tokens per second each."
   },
   {
@@ -1308,16 +1422,16 @@ const topicEnhancements = {
         { label: "Active params", value: `${formatNumber(results.activeParamsB, 1)}B` },
         { label: "Peak bandwidth", value: `${formatNumber(results.aggregatePeakBandwidthTBps, 2)} TB/s` },
         { label: "Usable bandwidth", value: `${formatNumber(results.effectiveDecodeBandwidthTBps, 2)} TB/s` },
-        { label: "Single-stream roofline", value: `${formatNumber(results.decodeTps, 1)} tok/s` },
-        { label: "Packed-batch bound", value: `${formatNumber(results.batchDecodeThroughputLowTps, 1)}–${formatNumber(results.batchDecodeThroughputHighTps, 1)} tok/s` }
+        { label: "Single-stream estimate", value: `${formatNumber(results.decodeTps, 1)} tok/s` },
+        { label: "Packed-batch total", value: `${formatNumberRange(results.batchDecodeThroughputLowTps, results.batchDecodeThroughputHighTps)} tok/s` }
       ];
     },
     walkthrough(results) {
       return [
         {
-          label: "Estimate active weight traffic and FLOPs per token",
-          value: `${formatNumber(results.activeParamsB, 1)}B active params × ${formatNumber(state.model.weightBytes, 2)} bytes/weight = ${formatGB(results.activeWeightReadGBPerToken)}; about ${formatCompact(results.activeParamsB * 2, 1)}B FLOPs/token`,
-          note: "Dense uses total parameters. MoE uses its configured active count; MLA does not change parameter activation."
+          label: "Estimate weight, KV reads, and compute per generated token",
+          value: `${formatGB(results.activeWeightReadGBPerToken)} of weights + about ${formatGB(results.decodeKvReadGBPerUserToken)} of KV reads; about ${formatCompact(results.activeParamsB * 2, 1)}B FLOPs`,
+          note: "The KV estimate uses the configured prompt, answer, and hidden reasoning length, so it reflects the slower end of a long answer. Sparse attention uses its selected-token limit; DSA also scans its indexer cache."
         },
         {
           label: "Convert peak bandwidth and compute to usable ceilings",
@@ -1328,16 +1442,16 @@ const topicEnhancements = {
           note: "Efficiency fields are planning assumptions. Use measured kernel and serving throughput when available."
         },
         {
-          label: "Take the lower single-stream roofline",
+          label: "Take the lower single-stream ceiling",
           value: `min(${formatNumber(results.decodeBandwidthBoundTps, 1)} HBM-bound, ${formatNumber(results.decodeComputeBoundTps, 1)} compute-bound) = ${formatNumber(results.decodeTps, 1)} tok/s`,
-          note: "This is a first-order ceiling. It excludes KV reads, attention work, queueing, and software overhead."
+          note: "The bandwidth side includes weight and estimated KV reads. This remains a hardware ceiling; it excludes attention arithmetic detail, queueing, and software overhead."
         },
         {
           label: "Bound a fully packed decode step",
-          value: `${formatNumber(state.workload.concurrentUsers, 0)} concurrent sequences: ${formatNumber(results.batchDecodeThroughputLowTps, 1)}–${formatNumber(results.batchDecodeThroughputHighTps, 1)} aggregate tok/s`,
+          value: `${formatNumber(state.workload.concurrentUsers, 0)} concurrent sequences: ${formatNumberRange(results.batchDecodeThroughputLowTps, results.batchDecodeThroughputHighTps)} aggregate tok/s`,
           note: state.model.parameterization === "moe"
-            ? "The range runs from low expert reuse to all requests sharing the same active weights. Actual routes and scheduler occupancy determine the result."
-            : "Assumes every selected request decodes in the same step and reuses the model weights. This is an ideal packed-batch bound, not a service prediction."
+            ? "This range runs from little overlap between requests' active expert weights to strong overlap. It includes KV reads, but actual routes, scheduler occupancy, and software overhead determine the service result."
+            : "Assumes every selected request decodes in the same step and shares model-weight reads. It includes estimated KV reads, but remains an ideal packed-batch ceiling rather than a service prediction."
         }
       ];
     }
@@ -1361,7 +1475,7 @@ const topicEnhancements = {
         {
           label: "Choose the prefill-sized model footprint",
           value: `${formatNumber(results.prefillParamsB, 1)}B effective prefill params`,
-          note: "Dense uses total parameters; MoE uses the configured active parameter count. MLA alone does not reduce parameter work."
+          note: "A dense text model uses its decoder parameters; multimodal encoder work is excluded. MoE uses the configured active parameter count. MLA alone does not reduce parameter work."
         },
         {
           label: "Convert peak compute into usable prefill compute",
@@ -1467,21 +1581,28 @@ function getArchitectureLabel(model) {
 }
 
 function getActiveParams(model) {
-  return model.parameterization === "moe" ? model.activeParamsB : model.totalParamsB;
+  if (model.parameterization === "moe") return model.activeParamsB;
+  return Number(model.decoderParamsB) > 0 ? model.decoderParamsB : model.totalParamsB;
 }
 
 function getPrefillParams(model) {
   return getActiveParams(model);
 }
 
-function getKvBytesPerTokenPerLayer(model) {
-  const attentionCacheValues = model.attentionType === "mla"
+function getAttentionKvBytesPerTokenPerLayer(model) {
+  return model.attentionType === "mla"
     ? (Number(model.mlaKvRank) + Number(model.mlaRopeDim)) * Number(model.kvBytes)
     : 2 * Number(model.kvHeads) * Number(model.headDim) * Number(model.kvBytes);
-  const indexerCacheValues = Number(model.sparseAttentionTopK) > 0 && Number(model.indexerHeadDim) > 0
+}
+
+function getIndexerCacheBytesPerTokenPerLayer(model) {
+  return Number(model.sparseAttentionTopK) > 0 && Number(model.indexerHeadDim) > 0
     ? Number(model.indexerHeadDim) * Number(model.indexerCacheBytes)
     : 0;
-  return attentionCacheValues + indexerCacheValues;
+}
+
+function getKvBytesPerTokenPerLayer(model) {
+  return getAttentionKvBytesPerTokenPerLayer(model) + getIndexerCacheBytesPerTokenPerLayer(model);
 }
 
 function getEfficiencyRatio(percent, fallback = 100) {
@@ -1534,11 +1655,24 @@ function calculateSizing(model, hardware, workload) {
   const indexerHeads = Math.max(0, Math.floor(Number(model.indexerHeads) || 0));
   const indexerHeadDim = Math.max(0, Math.floor(Number(model.indexerHeadDim) || 0));
   const kvBytesPerTokenPerLayer = getKvBytesPerTokenPerLayer({ ...model, kvBytes });
+  const attentionKvBytesPerTokenPerLayer = getAttentionKvBytesPerTokenPerLayer({ ...model, kvBytes });
+  const indexerCacheBytesPerTokenPerLayer = getIndexerCacheBytesPerTokenPerLayer(model);
   const fullAttentionLayers = layers - slidingWindowLayers;
   const kvPerUserBytes =
     kvBytesPerTokenPerLayer *
     (fullAttentionLayers * totalSequenceTokens + slidingWindowLayers * Math.min(totalSequenceTokens, slidingWindowTokens));
   const kvPerUserGB = kvPerUserBytes / 1e9;
+  const decodeAttentionTokens = sparseAttentionTopK > 0
+    ? Math.min(totalSequenceTokens, sparseAttentionTopK)
+    : totalSequenceTokens;
+  const decodeSlidingAttentionTokens = sparseAttentionTopK > 0
+    ? Math.min(totalSequenceTokens, slidingWindowTokens, sparseAttentionTopK)
+    : Math.min(totalSequenceTokens, slidingWindowTokens);
+  const attentionKvReadBytesPerUserToken = attentionKvBytesPerTokenPerLayer *
+    (fullAttentionLayers * decodeAttentionTokens + slidingWindowLayers * decodeSlidingAttentionTokens);
+  const indexerReadBytesPerUserToken = indexerCacheBytesPerTokenPerLayer * layers * totalSequenceTokens;
+  const decodeKvReadBytesPerUserToken = attentionKvReadBytesPerUserToken + indexerReadBytesPerUserToken;
+  const decodeKvReadGBPerUserToken = decodeKvReadBytesPerUserToken / 1e9;
   const weightMemoryGB = totalParamsB * weightBytes;
   const activeWeightReadBytesPerToken = activeParamsB * 1e9 * weightBytes;
   const activeWeightReadGBPerToken = activeWeightReadBytesPerToken / 1e9;
@@ -1552,30 +1686,31 @@ function calculateSizing(model, hardware, workload) {
   const effectiveDecodeComputeFLOPS = effectiveDecodeComputeTFLOPS * 1e12;
   const effectivePrefillComputeFLOPS = effectivePrefillComputeTFLOPS * 1e12;
   const activeModelFLOPsPerToken = activeParamsB * 1e9 * 2;
-  const decodeBandwidthBoundTps = activeWeightReadBytesPerToken > 0
-    ? effectiveDecodeBandwidthBps / activeWeightReadBytesPerToken
+  const decodeBytesPerToken = activeWeightReadBytesPerToken + decodeKvReadBytesPerUserToken;
+  const decodeBandwidthBoundTps = decodeBytesPerToken > 0
+    ? effectiveDecodeBandwidthBps / decodeBytesPerToken
     : Infinity;
   const decodeComputeBoundTps = activeModelFLOPsPerToken > 0
     ? effectiveDecodeComputeFLOPS / activeModelFLOPsPerToken
     : Infinity;
   const decodeTps = Math.max(0, Math.min(decodeBandwidthBoundTps, decodeComputeBoundTps));
   const decodeTimePerTokenSec = decodeTps > 0 ? 1 / decodeTps : Infinity;
-  const bestCaseBatchWeightBytes = model.parameterization === "moe"
-    ? activeWeightReadBytesPerToken
-    : weightMemoryGB * 1e9;
+  const bestCaseBatchWeightBytes = activeWeightReadBytesPerToken;
   const worstCaseBatchWeightBytes = model.parameterization === "moe"
     ? Math.min(totalParamsB, activeParamsB * concurrentUsers) * 1e9 * weightBytes
     : bestCaseBatchWeightBytes;
-  const batchBandwidthBoundLowTps = worstCaseBatchWeightBytes > 0
-    ? (concurrentUsers * effectiveDecodeBandwidthBps) / worstCaseBatchWeightBytes
+  const batchTrafficLowBytesPerStep = worstCaseBatchWeightBytes + concurrentUsers * decodeKvReadBytesPerUserToken;
+  const batchTrafficHighBytesPerStep = bestCaseBatchWeightBytes + concurrentUsers * decodeKvReadBytesPerUserToken;
+  const batchBandwidthBoundLowTps = batchTrafficLowBytesPerStep > 0
+    ? (concurrentUsers * effectiveDecodeBandwidthBps) / batchTrafficLowBytesPerStep
     : Infinity;
-  const batchBandwidthBoundHighTps = bestCaseBatchWeightBytes > 0
-    ? (concurrentUsers * effectiveDecodeBandwidthBps) / bestCaseBatchWeightBytes
+  const batchBandwidthBoundHighTps = batchTrafficHighBytesPerStep > 0
+    ? (concurrentUsers * effectiveDecodeBandwidthBps) / batchTrafficHighBytesPerStep
     : Infinity;
   const batchDecodeThroughputLowTps = Math.max(0, Math.min(batchBandwidthBoundLowTps, decodeComputeBoundTps));
   const batchDecodeThroughputHighTps = Math.max(0, Math.min(batchBandwidthBoundHighTps, decodeComputeBoundTps));
-  const perUserDecodeConservativeTps = Number.isFinite(Math.min(decodeTps, batchDecodeThroughputLowTps))
-    ? Math.max(0, Math.min(decodeTps, batchDecodeThroughputLowTps) / concurrentUsers)
+  const perUserDecodeConservativeTps = Number.isFinite(decodeTps)
+    ? Math.max(0, decodeTps / concurrentUsers)
     : 0;
   const perUserDecodeLowTps = Number.isFinite(batchDecodeThroughputLowTps)
     ? batchDecodeThroughputLowTps / concurrentUsers
@@ -1637,6 +1772,8 @@ function calculateSizing(model, hardware, workload) {
     kvBytesPerTokenPerLayer,
     kvPerUserBytes,
     kvPerUserGB,
+    decodeKvReadBytesPerUserToken,
+    decodeKvReadGBPerUserToken,
     totalKvGB,
     weightMemoryGB,
     activeWeightReadBytesPerToken,
@@ -1697,6 +1834,12 @@ function formatNumber(value, digits = 1) {
     : "—";
 }
 
+function formatNumberRange(low, high, digits = 1) {
+  const lowText = formatNumber(low, digits);
+  const highText = formatNumber(high, digits);
+  return lowText === highText ? lowText : `${lowText}–${highText}`;
+}
+
 function formatCompact(value, digits = 1) {
   return Number.isFinite(value)
     ? new Intl.NumberFormat("en-US", {
@@ -1728,6 +1871,13 @@ function formatLongDuration(seconds) {
   const hours = Math.floor(roundedSeconds / 3600);
   const minutes = Math.floor((roundedSeconds % 3600) / 60);
   return minutes ? `${hours} hr ${minutes} min` : `${hours} hr`;
+}
+
+function formatHumanDuration(seconds) {
+  if (!Number.isFinite(seconds)) return "—";
+  if (seconds < 10) return `${formatNumber(seconds, 1)} sec`;
+  if (seconds < 60) return `${Math.round(seconds)} sec`;
+  return formatLongDuration(seconds);
 }
 
 function formatPercent(value) {
@@ -1789,35 +1939,59 @@ function renderFullConcurrencyEstimate(results) {
   const users = Math.max(1, Math.floor(Number(state.workload.concurrentUsers) || 1));
   const tokensPerSecond = results.perUserDecodeConservativeTps;
   const comfort = getStreamComfort(tokensPerSecond);
+  const packedLowComfort = getStreamComfort(results.perUserDecodeLowTps);
+  const packedHighComfort = getStreamComfort(results.perUserDecodeHighTps);
   const outputTokens = Math.max(0, Math.floor(Number(state.workload.outputTokens) || 0));
-  const completionTime = tokensPerSecond > 0 && outputTokens > 0
-    ? formatLongDuration(outputTokens / tokensPerSecond)
+  const conservativeCompletionTime = tokensPerSecond > 0 && outputTokens > 0
+    ? formatHumanDuration(outputTokens / tokensPerSecond)
+    : null;
+  const packedFastestCompletionTime = results.perUserDecodeHighTps > 0 && outputTokens > 0
+    ? formatHumanDuration(outputTokens / results.perUserDecodeHighTps)
+    : null;
+  const packedSlowestCompletionTime = results.perUserDecodeLowTps > 0 && outputTokens > 0
+    ? formatHumanDuration(outputTokens / results.perUserDecodeLowTps)
+    : null;
+  const packedCompletionTime = packedFastestCompletionTime && packedSlowestCompletionTime
+    ? packedFastestCompletionTime === packedSlowestCompletionTime
+      ? packedFastestCompletionTime
+      : `${packedFastestCompletionTime}–${packedSlowestCompletionTime}`
     : null;
   const paceText = tokensPerSecond > 0 ? formatNumber(tokensPerSecond, 1) : "—";
-  const packedRangeText = `${formatNumber(results.perUserDecodeLowTps, 1)}–${formatNumber(results.perUserDecodeHighTps, 1)} tokens/s per person`;
+  const packedPaceText = formatNumberRange(results.perUserDecodeLowTps, results.perUserDecodeHighTps);
+  const packedFeelLabel = packedLowComfort.label === packedHighComfort.label
+    ? packedHighComfort.label
+    : `${packedLowComfort.label} to ${packedHighComfort.label}`;
+  const packedFeelText = packedFeelLabel.toLowerCase();
 
   return `
     <article class="comfort-card ${results.fitsInMemory ? "" : "memory-warning"}">
       <div class="comfort-main">
         <div class="section-kicker">How the stream may feel with everyone active</div>
-        <h3>${comfort.label}</h3>
-        <p>${comfort.description} ${tokensPerSecond > 0
-          ? `With all ${formatNumber(users, 0)} requests generating together, if the GPU cannot share model reads between people, each gets about <strong>${paceText} tokens per second</strong>.`
+        <h3>Batching can change the pace</h3>
+        <p>${tokensPerSecond > 0
+          ? `If all ${formatNumber(users, 0)} requests generate together without sharing model-weight reads, each gets about <strong>${paceText} tokens per second</strong> (${comfort.label.toLowerCase()}).`
           : "A per-person estimate is not available for these model and hardware values."}</p>
-        <p class="support-copy">If the server batches requests and reuses weights well, its ideal packed-batch range is ${packedRangeText}.</p>
-        ${completionTime
-          ? `<p class="support-copy">At that pace, a ${formatTokens(outputTokens)}-token answer takes about ${completionTime} to generate after it starts. The model must read the prompt first.</p>`
+        <p class="support-copy">With ideal packed batching and shared weight reads, the estimate is <strong>${packedPaceText} tokens per second per person</strong> (${packedFeelText}). That can be much faster than the no-sharing case, but it is still an upper estimate.</p>
+        ${conservativeCompletionTime && packedCompletionTime
+          ? `<p class="support-copy">A ${formatTokens(outputTokens)}-token answer would take about ${conservativeCompletionTime} in the no-sharing case, or ${packedCompletionTime} with ideal batching, after it starts. Prompt reading and queueing add to the initial wait.</p>`
           : `<p class="support-copy">Set output tokens above zero to estimate how long the answer takes to generate after it starts.</p>`}
         ${results.fitsInMemory
           ? ""
           : `<p class="comfort-warning">The model and ${formatNumber(users, 0)} conversation caches exceed the estimated GPU memory. Treat this speed as hypothetical until the configuration fits.</p>`}
       </div>
       <div class="comfort-stat">
-        <div class="metric-label">Conservative per-person pace</div>
-        <strong>${paceText} <span>tokens/s</span></strong>
+        <div class="metric-label">Cautious: no sharing</div>
+        <strong>${paceText}</strong>
+        <span class="comfort-stat-unit">tokens per second per person</span>
         <span class="comfort-badge ${comfort.className}">${comfort.label}</span>
       </div>
-      <div class="comfort-footnote">Cautious case: all ${formatNumber(users, 0)} configured requests decode at once and the GPU gets no benefit from sharing model reads. The packed-batch figure assumes it can reuse model data between requests. Both are ideal hardware ceilings; real speed can be lower, and prompt reading or queueing adds to the wait before an answer starts. The feel label is a rough guide, not a user-study result.</div>
+      <div class="comfort-stat">
+        <div class="metric-label">Ideal packed batch</div>
+        <strong>${packedPaceText}</strong>
+        <span class="comfort-stat-unit">tokens per second per person</span>
+        <span class="comfort-badge ${packedLowComfort.className}">${packedFeelLabel}</span>
+      </div>
+      <div class="comfort-footnote">These are two different serving assumptions, not a statistical range. Both include estimated KV-cache reads at the configured context length; the packed case assumes all ${formatNumber(users, 0)} requests share model-weight reads efficiently. Real service speed can be lower because of scheduling, kernels, and queueing. Prompt reading also adds to the wait before an answer starts. Feel labels are rough reading guides, not measured human thresholds.</div>
     </article>
   `;
 }
@@ -1872,7 +2046,7 @@ function loadWorkedExample() {
 
 function updateModelField(field, rawValue) {
   const integerFields = ["layers", "attentionHeads", "kvHeads", "headDim", "mlaKvRank", "mlaRopeDim", "mlaQkNopeDim", "mlaValueHeadDim", "sparseAttentionTopK", "indexerHeads", "indexerHeadDim", "maxContextTokens", "slidingWindowLayers", "slidingWindowTokens"];
-  const numericFields = ["totalParamsB", "activeParamsB", ...integerFields, "weightBytes", "kvBytes", "indexerCacheBytes"];
+  const numericFields = ["totalParamsB", "activeParamsB", "decoderParamsB", ...integerFields, "weightBytes", "kvBytes", "indexerCacheBytes"];
   if (!numericFields.includes(field)) {
     state.model[field] = rawValue;
   } else {
@@ -1881,7 +2055,7 @@ function updateModelField(field, rawValue) {
     if (integerFields.includes(field)) value = Math.floor(value);
     const minimum = ["slidingWindowLayers", "sparseAttentionTopK", "indexerHeads", "indexerHeadDim", "indexerCacheBytes", "maxContextTokens"].includes(field)
       ? 0
-      : ["totalParamsB", "activeParamsB", "weightBytes", "kvBytes"].includes(field)
+      : ["totalParamsB", "activeParamsB", "decoderParamsB", "weightBytes", "kvBytes"].includes(field)
         ? 0.01
         : 1;
     state.model[field] = Math.max(minimum, value);
@@ -1890,9 +2064,16 @@ function updateModelField(field, rawValue) {
     state.model.activeParamsB = state.model.totalParamsB;
   }
   if (field === "totalParamsB") {
+    if (state.model.decoderParamsB != null) {
+      state.model.decoderParamsB = Math.min(state.model.decoderParamsB, state.model.totalParamsB);
+    }
     state.model.activeParamsB = state.model.parameterization === "dense"
-      ? state.model.totalParamsB
+      ? (state.model.decoderParamsB == null ? state.model.totalParamsB : Math.min(state.model.decoderParamsB, state.model.totalParamsB))
       : Math.min(state.model.activeParamsB, state.model.totalParamsB);
+  }
+  if (field === "decoderParamsB") {
+    state.model.decoderParamsB = Math.min(state.model.decoderParamsB, state.model.totalParamsB);
+    state.model.activeParamsB = state.model.decoderParamsB;
   }
   if (field === "layers") state.model.slidingWindowLayers = Math.min(state.model.slidingWindowLayers, state.model.layers);
   if (field === "activeParamsB") state.model.activeParamsB = Math.min(state.model.activeParamsB, state.model.totalParamsB);
@@ -2045,9 +2226,12 @@ function renderControlDeck(results) {
     renderSelectField("model", "parameterization", "Model type", state.model.parameterization, [["dense", "Dense"], ["moe", "Mixture of experts (MoE)"]]),
     renderSelectField("model", "attentionType", "Attention / KV layout", state.model.attentionType, [["gqa", "Grouped-query attention (GQA)"], ["mla", "Multi-head latent attention (MLA)"]]),
     renderNumberField("model", "totalParamsB", "Total parameters (B)", state.model.totalParamsB, { min: 0.1, step: 0.1 }),
+    state.model.decoderParamsB != null
+      ? renderNumberField("model", "decoderParamsB", "Text decoder parameters/token (B)", state.model.decoderParamsB, { min: 0.1, max: state.model.totalParamsB, step: 0.01 })
+      : "",
     state.model.parameterization === "moe"
       ? renderNumberField("model", "activeParamsB", "Active parameters/token (B)", state.model.activeParamsB, { min: 0.1, max: state.model.totalParamsB, step: 0.1 })
-      : `<div class="field-note"><strong>Active parameters</strong><span>Dense: all ${formatNumber(state.model.totalParamsB, 1)}B parameters are active per token.</span></div>`,
+      : `<div class="field-note"><strong>Active parameters</strong><span>${state.model.decoderParamsB != null ? `${formatNumber(state.model.decoderParamsB, 2)}B text-decoder parameters are active per generated token; the additional weights are resident for multimodal input.` : `Dense: all ${formatNumber(state.model.totalParamsB, 1)}B parameters are active per token.`}</span></div>`,
     renderNumberField("model", "layers", "Transformer layers", state.model.layers, { min: 1, step: 1 }),
     renderNumberField("model", "attentionHeads", "Query heads", state.model.attentionHeads, { min: 1, step: 1 }),
     state.model.attentionType === "mla"
@@ -2082,7 +2266,7 @@ function renderControlDeck(results) {
         <article class="control-group">
           <div class="control-header"><div><div class="micro-label">1 · Model</div><h3>Choose a model</h3></div><button type="button" class="control-info-button" data-action="open-topic" data-topic="architecture" aria-controls="topic-sidebar" aria-expanded="${state.sidebarOpen}" aria-label="Explain model architecture">Info</button></div>
           ${renderSelectField("preset", "model", "Model preset", state.modelPresetId, modelPresetOptions)}
-        <p class="support-copy">${escapeHtml(state.model.name)} · ${getArchitectureLabel(state.model)} · ${formatNumber(state.model.totalParamsB, 1)}B stored${state.model.parameterization === "moe" ? ` · ${formatNumber(state.model.activeParamsB, 1)}B active/token${state.model.id === "deepseek-v32" ? " (estimate)" : ""}` : ""}</p>
+        <p class="support-copy">${escapeHtml(state.model.name)} · ${getArchitectureLabel(state.model)} · ${formatNumber(state.model.totalParamsB, 2)}B stored${state.model.parameterization === "moe" ? ` · ${formatNumber(state.model.activeParamsB, 1)}B active/token${state.model.id === "deepseek-v32" ? " (estimate)" : ""}` : state.model.decoderParamsB != null ? ` · ${formatNumber(state.model.decoderParamsB, 2)}B decoder/token` : ""}${state.model.presetNote ? `<br />${escapeHtml(state.model.presetNote)}` : ""}${state.model.modelCardUrl ? `<br /><a href="${escapeHtml(state.model.modelCardUrl)}" target="_blank" rel="noreferrer">Hugging Face model card</a>` : ""}</p>
         </article>
         <article class="control-group">
           <div class="control-header"><div><div class="micro-label">2 · Hardware</div><h3>Choose accelerators</h3></div><button type="button" class="control-info-button" data-action="open-topic" data-topic="hardware-envelope" aria-controls="topic-sidebar" aria-expanded="${state.sidebarOpen}" aria-label="Explain hardware assumptions">Info</button></div>
@@ -2141,7 +2325,7 @@ function renderGuideVisual(sectionId, results) {
         <button type="button" class="visual-button three-up" data-action="focus-topic" data-topic="decode">
           <div class="section-kicker">Feed</div>
           <strong>${formatNumber(results.decodeTps, 0)} tok/s</strong>
-          <div class="support-copy">Bandwidth-led decode estimate from active weight reads and usable bandwidth.</div>
+          <div class="support-copy">Decode estimate from active weight reads, configured KV reads, and usable bandwidth.</div>
         </button>
         <button type="button" class="visual-button three-up" data-action="focus-topic" data-topic="ttft">
           <div class="section-kicker">Process</div>
@@ -2158,8 +2342,12 @@ function renderGuideVisual(sectionId, results) {
         id: "dense",
         title: "Dense parameters",
         topic: "architecture",
-        detail: "All stored parameters are active per token.",
-        signal: "P_active = P_total"
+        detail: state.model.decoderParamsB != null
+          ? "Text decoder weights run for each generated token; audio or vision encoder weights stay resident for input processing."
+          : "All stored parameters are active per token.",
+        signal: state.model.decoderParamsB != null
+          ? `${formatNumber(results.activeParamsB, 2)}B decoder / ${formatNumber(state.model.totalParamsB, 2)}B stored`
+          : "P_active = P_total"
       },
       {
         id: "moe",
@@ -2285,18 +2473,18 @@ function renderGuideVisual(sectionId, results) {
         <button type="button" class="visual-button half" data-action="focus-topic" data-topic="decode">
           <div class="section-kicker">Decode time per token</div>
           <strong>${formatDuration(results.decodeTimePerTokenSec)}</strong>
-          <div class="support-copy">Derived from ${formatNumber(results.activeParamsB, 1)}B active params and ${formatNumber(results.effectiveDecodeBandwidthTBps, 2)} TB/s usable bandwidth.</div>
+          <div class="support-copy">Includes active weights and about ${formatGB(results.decodeKvReadGBPerUserToken)} of KV reads at this context length.</div>
         </button>
         <div class="visual-panel half">
           <div class="metric-label">Throughput split</div>
           <div class="topic-stat-row" style="margin-top: 12px;">
             <div class="topic-stat-card">
-            <div class="metric-label">Single-stream roofline</div>
+            <div class="metric-label">Single-stream ceiling</div>
               <div class="topic-stat">${formatNumber(results.decodeTps, 0)} tok/s</div>
             </div>
             <div class="topic-stat-card">
-              <div class="metric-label">Packed-batch range</div>
-              <div class="topic-stat">${formatNumber(results.batchDecodeThroughputLowTps, 1)}–${formatNumber(results.batchDecodeThroughputHighTps, 1)} tok/s</div>
+              <div class="metric-label">Packed-batch total</div>
+              <div class="topic-stat">${formatNumberRange(results.batchDecodeThroughputLowTps, results.batchDecodeThroughputHighTps)} tok/s</div>
             </div>
           </div>
         </div>
@@ -2410,17 +2598,17 @@ function renderSandboxView(results) {
           <div class="metric-subtext">Planned demand vs ${formatGB(results.totalSystemVramGB)} aggregate VRAM.</div>
         </article>
         <article class="metric-card accent">
-          ${renderMetricHeader("Single-sequence decode roofline", "decode")}
+          ${renderMetricHeader("Single-sequence decode ceiling", "decode")}
           <div class="metric-value">${formatNumber(results.decodeTps, 1)} tok/s</div>
-          <div class="metric-subtext">Plain language: the ideal speed ceiling for one answer stream.</div>
+          <div class="metric-subtext">Plain language: an ideal speed ceiling for one answer stream at this context length.</div>
           <div class="metric-subtext">min(${formatNumber(results.decodeBandwidthBoundTps, 1)} HBM-bound, ${formatNumber(results.decodeComputeBoundTps, 1)} compute-bound).</div>
-          <div class="metric-subtext">Ideal speed ceiling; a real server can be slower.</div>
+          <div class="metric-subtext">Bandwidth includes active weights and estimated KV-cache reads; real service can be slower.</div>
         </article>
         <article class="metric-card cyan">
           ${renderMetricHeader("Packed-batch decode bound", "decode")}
-          <div class="metric-value">${formatNumber(results.batchDecodeThroughputLowTps, 1)}–${formatNumber(results.batchDecodeThroughputHighTps, 1)} tok/s</div>
+          <div class="metric-value">${formatNumberRange(results.batchDecodeThroughputLowTps, results.batchDecodeThroughputHighTps)} tok/s</div>
           <div class="metric-subtext">Plain language: combined speed when ${formatNumber(state.workload.concurrentUsers, 0)} answer streams run together.</div>
-          <div class="metric-subtext">This ideal estimate allows requests to reuse model weight reads; real service can be slower.</div>
+          <div class="metric-subtext">The ideal estimate shares weight reads but still includes KV-cache traffic; real service can be slower.</div>
         </article>
         <article class="metric-card">
           ${renderMetricHeader("Prompt compute floor (prefill / prompt reading)", "ttft")}

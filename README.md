@@ -16,7 +16,7 @@ Then open <http://localhost:4173>.
 
 Start with the model, accelerator, and request mix cards. Open **Advanced assumptions** to edit model dimensions, precision, efficiency factors, maximum context, and memory margin. **Guide** explains the sizing model; **Sandbox** puts the live bounds and memory breakdown first. Presets are editable starting points, not benchmark profiles.
 
-Use the exact checkpoint config and serving-engine settings for a deployment estimate. The default Velvet 14B is illustrative, not a published checkpoint. The DeepSeek preset is based on the V3.2 config and uses FP8-sized weights and cache values as effective one-byte assumptions. The checkpoint reports 685B stored parameters; its 37B active count is carried forward from the V3 report as a planning estimate because the V3.2 config specifies expert counts but not an active-parameter total. The preset includes the 685B stored count but models main-path FLOPs only; optional multi-token prediction work is not included.
+Use the exact checkpoint config and serving-engine settings for a deployment estimate. The default Velvet 14B preset now uses Almawave's published 50-layer, 40/8 GQA configuration and 128K context limit. Velvet presets assume two bytes each for stored weights and KV values; the model cards report BF16 weights, while KV precision remains a calculator assumption. Multimodal presets count their full resident weights for memory, while token-generation throughput uses the text decoder size; audio/image encoder and projector work during input processing is not included. The DeepSeek preset is based on the V3.2 config and uses FP8-sized weights and cache values as effective one-byte assumptions. The checkpoint reports 685B stored parameters; its 37B active count is carried forward from the V3 report as a planning estimate because the V3.2 config specifies expert counts but not an active-parameter total. The preset includes the 685B stored count but models main-path FLOPs only; optional multi-token prediction work is not included.
 
 Dense 70B and MoE 47B / 13B active are generic shape examples, not exact published model configs. Replace their layer, head, and precision fields before using their results.
 
@@ -73,43 +73,53 @@ The memory-bound request ceiling divides the cache budget left after weights by 
 ```text
 effective_bandwidth = peak_bandwidth × decode_efficiency × multi_GPU_scaling
 effective_compute = peak_dense_compute × decode_compute_efficiency × multi_GPU_scaling
-active_weight_bytes/token = active_parameters × effective_weight_bytes
-FLOPs/token ≈ 2 × active_parameters
+active_weight_bytes/token = active_decoder_parameters × effective_weight_bytes
+FLOPs/token ≈ 2 × active_decoder_parameters
+decode_KV_read_bytes/token = attention-cache reads + indexer-cache reads
 single_sequence_tokens/s ≤ min(
-  effective_bandwidth / active_weight_bytes_per_token,
+  effective_bandwidth / (active_weight_bytes_per_token + decode_KV_read_bytes_per_token),
   effective_compute / FLOPs_per_token
 )
 ```
 
-Dense models use all stored parameters as active. MoE models use the configured active count for per-token work but all stored parameters for weight memory. The packed-batch range estimates weight reuse: its MoE low end assumes little expert overlap and its high end assumes requests reuse the same active experts. Both are capped by the single-token compute roofline. These are ideal synchronized decode bounds; KV/indexer reads, interconnect traffic, routing, speculative decoding, batching gaps, queueing, and runtime overhead can lower or change actual throughput.
+Dense text models use all stored parameters as active. Multimodal presets count audio/vision encoders and projectors in resident weight memory, but use the text decoder parameter count for per-token work; the calculator does not estimate the extra input-encoder compute. MoE models use the configured active count for per-token work but all stored parameters for weight memory. Decode KV reads use the configured full sequence length as a cautious end-of-answer context; sparse attention limits attention-cache reads to its selected-token count, while DSA also scans its indexer cache. The packed-batch range estimates weight reuse: its MoE low end assumes little expert overlap and its high end assumes requests reuse the same active experts. Each packed step accounts for one shared decoder-weight read plus a KV read for each active request. These are ideal synchronized decode bounds; interconnect traffic, routing, speculative decoding, batching gaps, queueing, and runtime overhead can lower or change actual throughput.
 
-The human-facing full-concurrency estimate uses a cautious no-weight-reuse case:
+The human-facing full-concurrency estimate compares a cautious no-weight-reuse case with the ideal packed-batch case:
 
 ```text
-conservative_tokens/s_per_person = min(
-  single_sequence_ceiling,
-  low_packed_batch_ceiling
-) / concurrent_requests
+no_sharing_tokens/s_per_person = single_sequence_tokens/s / concurrent_requests
 ideal_packed_tokens/s_per_person = packed_batch_tokens/s / concurrent_requests
 ```
 
-The first rate divides capacity among every configured request and drives the rough “how smooth will it feel?” label. The packed-batch rate is shown separately because real serving can reuse weight reads across requests. Both are theoretical ceilings, not measured service rates; queueing and runtime behavior can make real output slower. The feel labels are a rough guide, not a user study.
+The no-sharing rate divides capacity among every configured request and drives the cautious “how smooth will it feel?” label. The packed-batch rate is shown separately because a server can reuse weight reads across requests. The app collapses a low/high range to one displayed number when both endpoints round to the same value. These are different serving assumptions, not a statistical range or a prediction of actual service rates; queueing and runtime behavior can make real output slower. The feel labels are a rough guide, not a user study.
 
 ### Prompt compute and first visible answer
 
 ```text
-linear_prefill_FLOPs ≈ 2 × active_parameters × prompt_tokens
+linear_prefill_FLOPs ≈ 2 × active_decoder_parameters × prompt_tokens
 single_prompt_compute_floor = (linear_prefill_FLOPs + attention_FLOPs) / effective_prefill_compute
 synchronized_prompts_floor = concurrent_requests × single_prompt_compute_floor
 first_visible_answer_floor = synchronized_prompts_floor
-                             + hidden_reasoning_tokens / conservative_tokens/s_per_person
+                             + hidden_reasoning_tokens / no_sharing_tokens/s_per_person
 ```
 
-Attention FLOPs are approximate. For a query with `N` causal positions and an attention window `W`, the calculator counts `N(N+1)/2` pairs when `N ≤ W`; otherwise it counts `W(W+1)/2 + (N-W)W` pairs. The main attention term is `2 × query_heads × (QK_dim + value_dim) × pairs × attention_layers`. Sliding windows and DSA top-k reduce the main attention pairs. For DSA, the calculator separately estimates full-context indexer scoring as `2 × indexer_heads × indexer_key_dim × full_causal_pairs × layers`. This indexer term can be large for long prompts. It omits projection/decompression work, top-k selection cost, routing, memory stalls, kernel details, chunked prefill, and queueing. Treat both times as optimistic compute floors, not TTFT predictions.
+Attention FLOPs are approximate. For a query with `N` causal positions and an attention window `W`, the calculator counts `N(N+1)/2` pairs when `N ≤ W`; otherwise it counts `W(W+1)/2 + (N-W)W` pairs. The main attention term is `2 × query_heads × (QK_dim + value_dim) × pairs × attention_layers`. Sliding windows and DSA top-k reduce the main attention pairs. For DSA, the calculator separately estimates full-context indexer scoring as `2 × indexer_heads × indexer_key_dim × full_causal_pairs × layers`. This indexer term can be large for long prompts. For image prompts, include the expanded visual tokens in the prompt count; image encoding itself is excluded. Audio encoding and audio-specific work are also excluded. The model omits projection/decompression work, top-k selection cost, routing, memory stalls, kernel details, chunked prefill, and queueing. Treat both times as optimistic compute floors, not TTFT predictions.
 
 ## Preset sources and limitations
 
-Model and accelerator specs change. The presets are a small reference set, not a continuously maintained catalog. Sources were checked on 2026-11-19. Peak compute uses dense BF16/FP16 rates where available; the app does not assume structured sparsity peaks. Efficiency percentages are transparent user-editable assumptions, not measured norms.
+Model and accelerator specs change. The presets are a small reference set, not a continuously maintained catalog. Sources were checked on 2026-11-20. Peak compute uses dense BF16/FP16 rates where available; the app does not assume structured sparsity peaks. Efficiency percentages are transparent user-editable assumptions, not measured norms.
+
+### Almawave Velvet model presets
+
+The model selector includes the publicly listed Almawave Hugging Face checkpoints with enough architecture detail to size. The default Velvet 14B uses 14B stored/active parameters, 50 layers, 40 query heads, 8 KV heads, and a 128K context limit. Velvet 2B uses the card's 2B parameters, 28 layers, 32/8 heads, and 32K context; its 64-dimension head width is an estimate because the card lists the head counts but not the head width. Velvet2 3B uses 3B parameters, 38 layers, 40/10 heads, and 32K native context. Its possible 128K YaRN extension is not enabled by the preset.
+
+Velvet2 3B Speech uses the card's rounded 3.7B total for resident weights and 3B for text-decoder calculations. Its audio encoder, projector, and audio-specific adapter work are not included in prompt-time or generation-time estimates. Velvet2 3B Vision uses 3.44769B resident parameters (3B text model + 433M vision encoder + 14.69M projector); its 249.04M LoRA adapters are merged into the text model and are not counted a second time. Throughput and prompt time use the 3B text decoder, and image-encoder work is excluded. For vision requests, add the image's expanded visual tokens to the prompt-token input.
+
+- [Velvet 2B model card](https://huggingface.co/AlmawaveLabs/Velvet-2B)
+- [Velvet 14B model card](https://huggingface.co/AlmawaveLabs/Velvet-14B)
+- [Velvet2 3B model card](https://huggingface.co/AlmawaveLabs/Velvet2-3B)
+- [Velvet2 3B Speech model card](https://huggingface.co/AlmawaveLabs/Velvet2-3B-Speech)
+- [Velvet2 3B Vision model card](https://huggingface.co/AlmawaveLabs/Velvet2-3B-Vision)
 
 - [DeepSeek-V3.2 model card](https://huggingface.co/deepseek-ai/DeepSeek-V3.2) and [inference config](https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/main/inference/config_671B_v3.2.json) for stored size, MLA/DSA dimensions, FP8 inference, top-k, and context limit.
 - [DeepSeek-V3 technical report](https://arxiv.org/abs/2412.19437) for the 671B main model and 37B activated-parameter baseline used to seed the V3.2 active-count estimate.
